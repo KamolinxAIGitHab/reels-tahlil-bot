@@ -3,7 +3,6 @@ from aiogram.types import Message
 from aiogram.filters import Command
 import os
 import logging
-
 from bot.utils.downloader import download_reels_audio
 from bot.utils.stt import transcribe_audio
 from bot.utils.analyzer import analyze_content
@@ -20,43 +19,46 @@ async def cmd_start(message: Message):
 @router.message(F.text.contains("instagram.com/reels/") | F.text.contains("instagram.com/reel/"))
 async def handle_reel(message: Message):
     url = message.text.strip()
-    status_msg = await message.answer("Video yuklab olinmoqda...")
-    
+    status_msg = await message.answer("⏳ Video yuklab olinmoqda...")
+    file_path = None
+
     try:
-        # Download
-        file_path = download_reels_audio(url)
-        await status_msg.edit_text("Ovoz tekstga aylantirilmoqda...")
-        
-        # Transcribe
+        # ✅ await QO'SHILDI:
+        file_path = await download_reels_audio(url)
+        await status_msg.edit_text("🎙 Ovoz tekstga aylantirilmoqda...")
+
         text = transcribe_audio(file_path)
-        
-        # Clean up file
-        if os.path.exists(file_path):
+
+        if file_path and os.path.exists(file_path):
             os.remove(file_path)
-            
-        await status_msg.edit_text("Tahlil qilinmoqda...")
-        
-        # Analyze
+            file_path = None
+
+        await status_msg.edit_text("🔍 Tahlil qilinmoqda...")
+
         analysis = analyze_content(text)
-        
-        # Handle long messages
-        full_response = f"📝 **Transkripsiya:**\n{text}\n\n🔍 **Tahlil:**\n{analysis}"
-        
+
+        full_response = (
+            f"📝 **Transkripsiya:**\n{text}\n\n"
+            f"🔍 **Tahlil:**\n{analysis}"
+        )
+
         if len(full_response) > 4000:
-            # Simple split if too long
             await status_msg.edit_text(full_response[:4000])
             await message.answer(full_response[4000:])
         else:
             await status_msg.edit_text(full_response)
-        
+
     except Exception as e:
         logging.error(f"Error handling reel: {e}")
-        await status_msg.edit_text(f"Xatolik yuz berdi: {str(e)}")
+        await status_msg.edit_text(
+            f"❌ Xatolik: {str(e)}"
+        )
     finally:
-        # Final cleanup attempt
-        if 'file_path' in locals() and os.path.exists(file_path):
+        if file_path and os.path.exists(file_path):
             os.remove(file_path)
 
 @router.message()
 async def echo_all(message: Message):
-    await message.answer("Iltimos, Instagram Reel havolasini yuboring.")
+    await message.answer(
+        "📎 Iltimos, Instagram Reel havolasini yuboring."
+    )
