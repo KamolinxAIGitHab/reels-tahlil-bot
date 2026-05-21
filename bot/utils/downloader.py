@@ -14,7 +14,6 @@ L = instaloader.Instaloader(
 INSTAGRAM_USER = os.getenv("INSTAGRAM_USERNAME")
 INSTAGRAM_PASS = os.getenv("INSTAGRAM_PASSWORD")
 
-# YANGI - session orqali login:
 try:
     L.load_session_from_file(
         INSTAGRAM_USER,
@@ -42,9 +41,24 @@ async def download_reels_audio(url: str) -> str:
         tmp_dir = os.path.join(output_dir, str(uuid.uuid4()))
         os.makedirs(tmp_dir, exist_ok=True)
         L.download_post(post, target=tmp_dir)
-        for f in os.listdir(tmp_dir):
+
+        # Barcha fayllarni ko'rish
+        all_files = os.listdir(tmp_dir)
+        print(f"DEBUG - Yuklangan fayllar: {all_files}")
+
+        # mp4 qidirish
+        for f in all_files:
             if f.endswith(".mp4"):
                 return os.path.join(tmp_dir, f)
-        raise FileNotFoundError("Video yuklanmadi!")
+
+        # Boshqa video formatlar
+        for f in all_files:
+            if f.endswith((".mov", ".avi", ".mkv", ".webm")):
+                return os.path.join(tmp_dir, f)
+
+        # Xato - fayllar ro'yxati bilan
+        raise FileNotFoundError(
+            f"Video topilmadi! Mavjud fayllar: {all_files}"
+        )
 
     return await loop.run_in_executor(None, _download)
