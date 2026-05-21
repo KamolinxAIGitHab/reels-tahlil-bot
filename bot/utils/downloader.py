@@ -27,6 +27,29 @@ except Exception as e:
     L.login(INSTAGRAM_USER, INSTAGRAM_PASS)
     L.save_session_to_file('session-reelsbot2026')
 
+def _find_video(tmp_dir: str) -> str:
+    """Papkadan video faylni topadi"""
+    all_files = os.listdir(tmp_dir)
+    print(f"DEBUG fayllar: {all_files}")
+
+    # mp4 qidirish
+    for f in all_files:
+        if f.endswith(".mp4"):
+            full_path = os.path.join(tmp_dir, f)
+            print(f"DEBUG mp4 topildi: {full_path}")
+            return full_path
+
+    # Boshqa formatlar
+    for f in all_files:
+        if f.endswith((".mov", ".avi", ".mkv", ".webm")):
+            full_path = os.path.join(tmp_dir, f)
+            print(f"DEBUG video topildi: {full_path}")
+            return full_path
+
+    raise FileNotFoundError(
+        f"Video topilmadi! Fayllar: {all_files}"
+    )
+
 async def download_reels_audio(url: str) -> str:
     output_dir = "downloads"
     os.makedirs(output_dir, exist_ok=True)
@@ -39,4 +62,13 @@ async def download_reels_audio(url: str) -> str:
     loop = asyncio.get_event_loop()
 
     def _download():
-        post = instalo
+        post = instaloader.Post.from_shortcode(
+            L.context, shortcode
+        )
+        tmp_dir = os.path.join(output_dir, str(uuid.uuid4()))
+        os.makedirs(tmp_dir, exist_ok=True)
+        L.download_post(post, target=tmp_dir)
+        result = _find_video(tmp_dir)
+        return result
+
+    return await loop.run_in_executor(None, _download)
