@@ -14,13 +14,17 @@ L = instaloader.Instaloader(
 INSTAGRAM_USER = os.getenv("INSTAGRAM_USERNAME")
 INSTAGRAM_PASS = os.getenv("INSTAGRAM_PASSWORD")
 
-if INSTAGRAM_USER and INSTAGRAM_PASS:
+# YANGI - session orqali login:
+try:
+    L.load_session_from_file(
+        INSTAGRAM_USER,
+        'session-reelsbot2026'
+    )
+except:
     L.login(INSTAGRAM_USER, INSTAGRAM_PASS)
+    L.save_session_to_file('session-reelsbot2026')
 
 async def download_reels_audio(url: str) -> str:
-    """
-    Instagram Reel ni yuklab, mp4 faylni qaytaradi.
-    """
     output_dir = "downloads"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -29,20 +33,18 @@ async def download_reels_audio(url: str) -> str:
         raise ValueError("Instagram Reel URL noto'g'ri!")
 
     shortcode = match.group(1)
-
-    # Sync funksiyani async loop da ishlatish
     loop = asyncio.get_event_loop()
 
     def _download():
-        post = instaloader.Post.from_shortcode(L.context, shortcode)
+        post = instaloader.Post.from_shortcode(
+            L.context, shortcode
+        )
         tmp_dir = os.path.join(output_dir, str(uuid.uuid4()))
         os.makedirs(tmp_dir, exist_ok=True)
         L.download_post(post, target=tmp_dir)
         for f in os.listdir(tmp_dir):
             if f.endswith(".mp4"):
                 return os.path.join(tmp_dir, f)
-        raise FileNotFoundError("Video fayl yuklanmadi!")
+        raise FileNotFoundError("Video yuklanmadi!")
 
-    # Thread da ishlatish — bot bloklanmaydi
-    result = await loop.run_in_executor(None, _download)
-    return result
+    return await loop.run_in_executor(None, _download)
