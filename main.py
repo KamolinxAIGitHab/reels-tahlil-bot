@@ -5,6 +5,9 @@ from aiogram import Bot, Dispatcher
 from bot.config import settings
 from bot.handlers import reels
 
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
+
 async def main():
     bot = Bot(token=settings.bot_token)
     dp = Dispatcher()
