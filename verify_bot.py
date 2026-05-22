@@ -14,11 +14,17 @@ def test_downloader_mock():
     import asyncio
     import shutil
 
-    def fake_download(post, target):
-        open(os.path.join(target, "video.mp4"), "w").close()
+    class FakeYDL:
+        def __init__(self, opts):
+            self._tmp_dir = os.path.dirname(opts["outtmpl"])
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def download(self, urls):
+            open(os.path.join(self._tmp_dir, "video.mp4"), "w").close()
 
-    with patch('instaloader.Post.from_shortcode'), \
-         patch('bot.utils.downloader.L.download_post', side_effect=fake_download):
+    with patch('bot.utils.downloader.yt_dlp.YoutubeDL', FakeYDL):
         url = "https://www.instagram.com/reel/C-xyz/"
         try:
             path = asyncio.run(download_reels_audio(url))
