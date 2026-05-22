@@ -11,14 +11,19 @@ from bot.utils.stt import transcribe_audio
 from bot.utils.analyzer import analyze_content
 
 def test_downloader_mock():
-    with patch('yt_dlp.YoutubeDL') as mock_ydl:
+    import asyncio
+    import shutil
+
+    def fake_download(post, target):
+        open(os.path.join(target, "video.mp4"), "w").close()
+
+    with patch('instaloader.Post.from_shortcode'), \
+         patch('bot.utils.downloader.L.download_post', side_effect=fake_download):
         url = "https://www.instagram.com/reel/C-xyz/"
         try:
-            path = download_reels_audio(url)
+            path = asyncio.run(download_reels_audio(url))
             print(f"Downloader test passed: {path}")
-            # Clean up
-            if os.path.exists(path):
-                os.remove(path)
+            shutil.rmtree(os.path.dirname(path), ignore_errors=True)
         except Exception as e:
             print(f"Downloader test failed: {e}")
 
