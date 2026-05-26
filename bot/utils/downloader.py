@@ -6,6 +6,9 @@ import asyncio
 INSTAGRAM_USER = os.getenv("INSTAGRAM_USERNAME")
 INSTAGRAM_PASS = os.getenv("INSTAGRAM_PASSWORD")
 
+_COOKIES_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "cookies.txt")
+_COOKIES_FILE = os.path.normpath(_COOKIES_FILE)
+
 def _build_ydl_opts(tmp_dir: str) -> dict:
     opts = {
         "outtmpl": os.path.join(tmp_dir, "%(id)s.%(ext)s"),
@@ -14,7 +17,9 @@ def _build_ydl_opts(tmp_dir: str) -> dict:
         "no_warnings": True,
         "merge_output_format": "mp4",
     }
-    if INSTAGRAM_USER and INSTAGRAM_PASS:
+    if os.path.exists(_COOKIES_FILE):
+        opts["cookiefile"] = _COOKIES_FILE
+    elif INSTAGRAM_USER and INSTAGRAM_PASS:
         opts["username"] = INSTAGRAM_USER
         opts["password"] = INSTAGRAM_PASS
     return opts
