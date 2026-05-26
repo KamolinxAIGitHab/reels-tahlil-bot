@@ -69,11 +69,24 @@ async def handle_reel(message: Message):
         logging.error(f"Error handling reel: {e}")
         err = str(e).lower()
         if any(k in err for k in ("rate", "429", "too many", "limit", "ratelimit")):
-            await status_msg.edit_text(
-                "⏳ Instagram vaqtinchalik cheklov qo'ydi.\n\n"
-                "10-15 daqiqadan so'ng qayta urining.\n\n"
-                "Yoki boshqa Reels havolasini yuboring."
-            )
+            rate_messages = {
+                "lang_kirill": (
+                    "⏳ Instagram вақтинчалик чеклов қўйди.\n\n"
+                    "10-15 дақиқадан сўнг қайта уриниб кўринг.\n\n"
+                    "Ёки бошқа Reels ҳаволасини юборинг."
+                ),
+                "lang_lotin": (
+                    "⏳ Instagram vaqtinchalik cheklov qo'ydi.\n\n"
+                    "10-15 daqiqadan so'ng qayta urining.\n\n"
+                    "Yoki boshqa Reels havolasini yuboring."
+                ),
+                "lang_rus": (
+                    "⏳ Instagram временно ограничил доступ.\n\n"
+                    "Повторите попытку через 10-15 минут.\n\n"
+                    "Или отправьте другую ссылку на Reels."
+                ),
+            }
+            await status_msg.edit_text(rate_messages.get(lang, rate_messages["lang_kirill"]))
         else:
             await status_msg.edit_text(f"❌ Xatolik: {str(e)}")
     finally:
