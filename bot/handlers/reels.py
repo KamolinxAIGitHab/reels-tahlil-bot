@@ -67,7 +67,15 @@ async def handle_reel(message: Message):
 
     except Exception as e:
         logging.error(f"Error handling reel: {e}")
-        await status_msg.edit_text(f"❌ Xatolik: {str(e)}")
+        err = str(e).lower()
+        if any(k in err for k in ("rate", "429", "too many", "limit", "ratelimit")):
+            await status_msg.edit_text(
+                "⏳ Instagram vaqtinchalik cheklov qo'ydi.\n\n"
+                "10-15 daqiqadan so'ng qayta urining.\n\n"
+                "Yoki boshqa Reels havolasini yuboring."
+            )
+        else:
+            await status_msg.edit_text(f"❌ Xatolik: {str(e)}")
     finally:
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
