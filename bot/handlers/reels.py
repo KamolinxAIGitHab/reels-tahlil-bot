@@ -31,9 +31,9 @@ async def set_language(callback: CallbackQuery):
     user_language[callback.from_user.id] = lang
 
     confirmations = {
-        "lang_kirill": "✅ Тил танланди: Ўзбекча (Кирилл)\nИнди Instagram Reel ҳаволасини юборинг.",
-        "lang_lotin":  "✅ Til tanlandi: O'zbekcha (Lotin)\nEndi Instagram Reel havolasini yuboring.",
-        "lang_rus":    "✅ Язык выбран: Русский\nТеперь отправьте ссылку на Instagram Reel.",
+        "lang_kirill": "✅ Тил танланди: Ўзбекча (Кирилл)\nИнди Instagram Reels ҳаволасини юборинг.",
+        "lang_lotin":  "✅ Til tanlandi: O'zbekcha (Lotin)\nEndi Instagram Reels havolasini yuboring.",
+        "lang_rus":    "✅ Язык выбран: Русский\nТеперь отправьте ссылку на Instagram Reels.",
     }
     await callback.message.edit_text(confirmations[lang])
     await callback.answer()
@@ -95,4 +95,4 @@ async def handle_reel(message: Message):
 
 @router.message()
 async def echo_all(message: Message):
-    await message.answer("📎 Iltimos, Instagram Reel havolasini yuboring.")
+    await message.answer("📎 Iltimos, Instagram Reels havolasini yuboring.")
