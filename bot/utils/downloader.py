@@ -2,12 +2,35 @@ import yt_dlp
 import os
 import uuid
 import asyncio
+import base64
 
-INSTAGRAM_USER = os.getenv("INSTAGRAM_USERNAME")
-INSTAGRAM_PASS = os.getenv("INSTAGRAM_PASSWORD")
+INSTAGRAM_USER    = os.getenv("INSTAGRAM_USERNAME")
+INSTAGRAM_PASS    = os.getenv("INSTAGRAM_PASSWORD")
+INSTAGRAM_COOKIES = os.getenv("INSTAGRAM_COOKIES")
 
-_COOKIES_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "cookies.txt")
-_COOKIES_FILE = os.path.normpath(_COOKIES_FILE)
+_LOCAL_COOKIES = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "cookies.txt.txt")
+)
+
+def _resolve_cookies_file() -> str | None:
+    # 1. INSTAGRAM_COOKIES env var — base64 decode qilib /tmp ga yoz
+    if INSTAGRAM_COOKIES:
+        tmp_path = "/tmp/cookies.txt"
+        try:
+            decoded = base64.b64decode(INSTAGRAM_COOKIES)
+        except Exception:
+            decoded = INSTAGRAM_COOKIES.encode()
+        with open(tmp_path, "wb") as f:
+            f.write(decoded)
+        return tmp_path
+
+    # 2. Loyiha ildizidagi cookies fayli (lokal ishlatish uchun)
+    if os.path.exists(_LOCAL_COOKIES):
+        return _LOCAL_COOKIES
+
+    return None
+
+_COOKIES_FILE = _resolve_cookies_file()
 
 def _build_ydl_opts(tmp_dir: str) -> dict:
     opts = {
@@ -17,7 +40,7 @@ def _build_ydl_opts(tmp_dir: str) -> dict:
         "no_warnings": True,
         "merge_output_format": "mp4",
     }
-    if os.path.exists(_COOKIES_FILE):
+    if _COOKIES_FILE:
         opts["cookiefile"] = _COOKIES_FILE
     elif INSTAGRAM_USER and INSTAGRAM_PASS:
         opts["username"] = INSTAGRAM_USER
