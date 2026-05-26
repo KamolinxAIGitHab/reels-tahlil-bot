@@ -59,16 +59,11 @@ async def handle_reel(message: Message):
 
         analysis = analyze_content(text, lang=lang)
 
-        full_response = (
-            f"📝 **Transkripsiya:**\n{text}\n\n"
-            f"🔍 **Tahlil:**\n{analysis}"
-        )
-
-        if len(full_response) > 4000:
-            await status_msg.edit_text(full_response[:4000])
-            await message.answer(full_response[4000:])
+        if len(analysis) > 4000:
+            await status_msg.edit_text(analysis[:4000])
+            await message.answer(analysis[4000:])
         else:
-            await status_msg.edit_text(full_response)
+            await status_msg.edit_text(analysis)
 
     except Exception as e:
         logging.error(f"Error handling reel: {e}")
