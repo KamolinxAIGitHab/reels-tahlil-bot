@@ -21,7 +21,15 @@ def analyze_content(text: str) -> str:
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "Siz foydali maslahatlar beruvchi yordamchisiz."},
+            {"role": "system", "content": (
+                "Siz professional kontent tahlilchisisiz.\n"
+                "Berilgan matnni quyidagi tuzilmada tahlil qil:\n\n"
+                "✅ TEXNIK TO'G'RI: Matndagi ilmiy/texnik jihatdan isbotlangan faktlar\n\n"
+                "⚠️ ORTIRILGAN: Haqiqatga yaqin, lekin ko'paytirib aytilgan da'volar\n\n"
+                "❌ NOTO'G'RI/ALDAMCHI: Yolg'on yoki chalg'ituvchi tezislar — aniq sababi bilan\n\n"
+                "💡 AMALIY QIYMAT: Bor ✓ / Yo'q ✗ — 1-2 jumla izoh bilan\n\n"
+                "Javob faqat o'zbek tilida, kirill alifbosida bo'lsin."
+            )},
             {"role": "user", "content": prompt}
         ]
     )
