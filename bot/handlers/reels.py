@@ -8,6 +8,7 @@ import logging
 from bot.utils.downloader import download_reels_audio
 from bot.utils.stt import transcribe_audio
 from bot.utils.analyzer import analyze_content
+from bot.utils.langgraph_analyzer import analyze_with_graph
 
 router = Router()
 
@@ -63,6 +64,12 @@ async def handle_reel(message: Message):
         await status_msg.edit_text("🔍 Tahlil qilinmoqda...")
 
         analysis = await loop.run_in_executor(None, analyze_content, text, lang)
+
+        try:
+            langgraph_result = await loop.run_in_executor(None, analyze_with_graph, text, lang)
+            logging.info(f"LANGGRAPH NATIJA:\n{langgraph_result}")
+        except Exception as e:
+            logging.error(f"LangGraph xatolik: {e}")
 
         if len(analysis) > 4000:
             await status_msg.edit_text(analysis[:4000])
