@@ -1,2 +1,11 @@
 .env
 cookies.txt
+
+.venv/
+.venv-ubuntu/
+venv/
+__pycache__/
+bot/__pycache__/
+bot/handlers/__pycache__/
+bot/utils/__pycache__/
+.python-version
