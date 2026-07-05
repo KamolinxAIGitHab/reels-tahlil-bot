@@ -1,7 +1,9 @@
 from aiogram import Router, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.filters import Command
+import asyncio
 import os
+import shutil
 import logging
 from bot.utils.downloader import download_reels_audio
 from bot.utils.stt import transcribe_audio
@@ -44,12 +46,15 @@ async def handle_reel(message: Message):
     lang = user_language.get(message.from_user.id, "lang_kirill")
     status_msg = await message.answer("⏳ Video yuklab olinmoqda...")
     file_path = None
+    tmp_dir = None
+    loop = asyncio.get_event_loop()
 
     try:
         file_path = await download_reels_audio(url)
+        tmp_dir = os.path.dirname(file_path)
         await status_msg.edit_text("🎙 Ovoz tekstga aylantirilmoqda...")
 
-        text = transcribe_audio(file_path)
+        text = await loop.run_in_executor(None, transcribe_audio, file_path)
 
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
@@ -57,7 +62,7 @@ async def handle_reel(message: Message):
 
         await status_msg.edit_text("🔍 Tahlil qilinmoqda...")
 
-        analysis = analyze_content(text, lang=lang)
+        analysis = await loop.run_in_executor(None, analyze_content, text, lang)
 
         if len(analysis) > 4000:
             await status_msg.edit_text(analysis[:4000])
@@ -90,8 +95,8 @@ async def handle_reel(message: Message):
         else:
             await status_msg.edit_text(f"❌ Xatolik: {str(e)}")
     finally:
-        if file_path and os.path.exists(file_path):
-            os.remove(file_path)
+        if tmp_dir and os.path.exists(tmp_dir):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
 @router.message()
 async def echo_all(message: Message):

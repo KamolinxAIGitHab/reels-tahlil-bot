@@ -9,7 +9,7 @@ INSTAGRAM_PASS    = os.getenv("INSTAGRAM_PASSWORD")
 INSTAGRAM_COOKIES = os.getenv("INSTAGRAM_COOKIES")
 
 _LOCAL_COOKIES = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "cookies.txt.txt")
+    os.path.join(os.path.dirname(__file__), "..", "..", "cookies.txt")
 )
 
 def _resolve_cookies_file() -> str | None:
