@@ -6,7 +6,7 @@ import os
 import shutil
 import logging
 from bot.utils.downloader import download_reels_audio
-from bot.utils.stt import transcribe_audio
+from bot.utils.stt import transcribe_audio, UnclearAudioError
 from bot.utils.analyzer import analyze_content
 from bot.utils.langgraph_analyzer import analyze_with_graph
 
@@ -45,6 +45,7 @@ async def set_language(callback: CallbackQuery):
 async def handle_reel(message: Message):
     url = message.text.strip()
     lang = user_language.get(message.from_user.id, "lang_kirill")
+    logging.info(f"REELS SO'ROV: user_id={message.from_user.id} url={url}")
     status_msg = await message.answer("⏳ Video yuklab olinmoqda...")
     file_path = None
     tmp_dir = None
@@ -55,7 +56,31 @@ async def handle_reel(message: Message):
         tmp_dir = os.path.dirname(file_path)
         await status_msg.edit_text("🎙 Ovoz tekstga aylantirilmoqda...")
 
-        text = await loop.run_in_executor(None, transcribe_audio, file_path)
+        try:
+            text = await loop.run_in_executor(None, transcribe_audio, file_path)
+        except UnclearAudioError as e:
+            logging.warning(f"Aniq bo'lmagan audio (user_id={message.from_user.id}, url={url}): {e}")
+            unclear_messages = {
+                "lang_kirill": (
+                    "⚠️ Видеода аниқ товуш ёки нутқ топилмади "
+                    "(жуда қисқа ёки жуда паст овозли).\n\n"
+                    "Илтимос, бошқа Reels ҳаволасини юборинг."
+                ),
+                "lang_lotin": (
+                    "⚠️ Videoda aniq tovush yoki nutq topilmadi "
+                    "(juda qisqa yoki juda past ovozli).\n\n"
+                    "Iltimos, boshqa Reels havolasini yuboring."
+                ),
+                "lang_rus": (
+                    "⚠️ В видео не найден чёткий звук или речь "
+                    "(слишком коротко или слишком тихо).\n\n"
+                    "Пожалуйста, отправьте другую ссылку на Reels."
+                ),
+            }
+            await status_msg.edit_text(unclear_messages.get(lang, unclear_messages["lang_kirill"]))
+            return
+
+        logging.info(f"WHISPER MATNI (user_id={message.from_user.id}): {text[:1000]}")
 
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
