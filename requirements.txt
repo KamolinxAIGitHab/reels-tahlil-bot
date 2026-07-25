@@ -18,7 +18,6 @@ jiter==0.14.0
 magic-filter==1.0.12
 multidict==6.7.1
 openai==2.36.0
-playwright==1.58.0
 propcache==0.5.2
 pydantic==2.13.4
 pydantic-settings==2.14.1
