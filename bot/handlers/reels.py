@@ -3,8 +3,10 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 from aiogram.filters import Command
 import asyncio
 import os
+import re
 import shutil
 import logging
+from urllib.parse import urlparse
 from bot.utils.downloader import download_reels_audio
 from bot.utils.stt import transcribe_audio, UnclearAudioError
 from bot.utils.analyzer import analyze_content
@@ -13,6 +15,30 @@ from bot.utils.langgraph_analyzer import analyze_with_graph
 router = Router()
 
 user_language: dict[int, str] = {}
+
+REEL_URL_PATTERN = re.compile(
+    r"(?:https?://)?(?:www\.)?instagram\.com/reels?/[A-Za-z0-9_\-]+/?(?:\?[A-Za-z0-9=&%_\-]*)?",
+    re.IGNORECASE,
+)
+ALLOWED_HOSTS = {"instagram.com", "www.instagram.com"}
+
+
+def extract_reel_url(text: str | None) -> str | None:
+    """Xabardan faqat Instagram Reel URL qismini ajratib oladi va
+    host'ini qat'iy tekshiradi. Yaroqsiz bo'lsa None qaytaradi."""
+    match = REEL_URL_PATTERN.search(text or "")
+    if not match:
+        return None
+
+    candidate = match.group(0)
+    if not candidate.lower().startswith(("http://", "https://")):
+        candidate = "https://" + candidate
+
+    hostname = (urlparse(candidate).hostname or "").lower()
+    if hostname not in ALLOWED_HOSTS:
+        return None
+
+    return candidate
 
 def lang_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -41,9 +67,9 @@ async def set_language(callback: CallbackQuery):
     await callback.message.edit_text(confirmations[lang])
     await callback.answer()
 
-@router.message(F.text.contains("instagram.com/reels/") | F.text.contains("instagram.com/reel/"))
+@router.message(F.text.func(lambda text: extract_reel_url(text) is not None))
 async def handle_reel(message: Message):
-    url = message.text.strip()
+    url = extract_reel_url(message.text)
     lang = user_language.get(message.from_user.id, "lang_kirill")
     logging.info(f"REELS SO'ROV: user_id={message.from_user.id} url={url}")
     status_msg = await message.answer("⏳ Video yuklab olinmoqda...")
