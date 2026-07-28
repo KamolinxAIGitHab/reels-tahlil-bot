@@ -1,5 +1,6 @@
 .env
-cookies.txt
+cookies*
+session-*
 
 .venv/
 .venv-ubuntu/
@@ -9,3 +10,6 @@ bot/__pycache__/
 bot/handlers/__pycache__/
 bot/utils/__pycache__/
 .python-version
+
+downloads/
+*.mp4
