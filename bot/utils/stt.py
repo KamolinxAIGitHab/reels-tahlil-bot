@@ -39,7 +39,7 @@ def _probe_audio(file_path: str) -> tuple[Optional[float], Optional[float]]:
     return duration, mean_volume
 
 
-def transcribe_audio(file_path: str) -> str:
+def transcribe_audio(file_path: str, language: str = "uz") -> str:
     """
     Transcribes the audio from the given file path using OpenAI Whisper.
     """
@@ -60,6 +60,7 @@ def transcribe_audio(file_path: str) -> str:
         transcript = client.audio.transcriptions.create(
             model="whisper-1",
             file=audio_file,
+            language=language,
             temperature=0,
         )
     return transcript.text

@@ -231,7 +231,8 @@ async def handle_voice(message: Message):
         from bot.utils.stt import transcribe_audio
         import asyncio
         loop = asyncio.get_event_loop()
-        text = await loop.run_in_executor(None, transcribe_audio, mp3_path)
+        whisper_lang = "ru" if lang == "lang_rus" else "uz"
+        text = await loop.run_in_executor(None, transcribe_audio, mp3_path, whisper_lang)
 
         if not text or not text.strip():
             if lang == "lang_rus":
@@ -323,7 +324,8 @@ async def handle_reel(message: Message):
             await status_msg.edit_text("🎙 Аудио матнга айлантирилаяпти...")
 
         try:
-            text = await loop.run_in_executor(None, transcribe_audio, file_path)
+            whisper_lang = "ru" if lang == "lang_rus" else "uz"
+            text = await loop.run_in_executor(None, transcribe_audio, file_path, whisper_lang)
         except UnclearAudioError as e:
             logging.warning(f"Aniq bo'lmagan audio (user_id={message.from_user.id}, url={url}): {e}")
             unclear_messages = {
