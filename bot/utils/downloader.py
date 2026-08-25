@@ -115,9 +115,9 @@ async def download_instagram_image(url: str):
         images = []
 
         if post.typename == "GraphSidecar":
-            for node in post.get_sidecar_nodes():
+            for i, node in enumerate(post.get_sidecar_nodes()):
                 if not node.is_video:
-                    img_path = os.path.join(tmp_dir, f"{node.shortcode}.jpg")
+                    img_path = os.path.join(tmp_dir, f"slide_{i}.jpg")
                     L.download_pic(img_path, node.display_url, post.date_utc)
                     images.append(img_path)
         elif post.typename == "GraphImage":
