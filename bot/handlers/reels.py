@@ -184,6 +184,91 @@ async def handle_post(message: Message):
             if tmp_dir and os.path.exists(tmp_dir):
                 shutil.rmtree(tmp_dir, ignore_errors=True)
 
+@router.message(F.voice)
+async def handle_voice(message: Message):
+    lang = user_language.get(message.from_user.id, "lang_kirill")
+
+    if lang == "lang_rus":
+        status_msg = await message.answer("⏳ Голосовое сообщение обрабатывается...")
+    elif lang == "lang_lotin":
+        status_msg = await message.answer("⏳ Ovozli xabar qayta ishlanmoqda...")
+    else:
+        status_msg = await message.answer("⏳ Овозли хабар қайта ишланяпти...")
+
+    tmp_dir = None
+    try:
+        # Ovozli faylni yuklab olish
+        voice = message.voice
+        file = await message.bot.get_file(voice.file_id)
+
+        import tempfile, os, shutil
+        tmp_dir = tempfile.mkdtemp()
+        ogg_path = os.path.join(tmp_dir, "voice.ogg")
+        mp3_path = os.path.join(tmp_dir, "voice.mp3")
+
+        # Faylni saqlash
+        await message.bot.download_file(file.file_path, ogg_path)
+
+        # ogg -> mp3 konvertatsiya
+        if lang == "lang_rus":
+            await status_msg.edit_text("🎙 Аудио преобразуется в текст...")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("🎙 Audio matnga aylantirilmoqda...")
+        else:
+            await status_msg.edit_text("🎙 Аудио матнга айлантирилаяпти...")
+
+        import subprocess
+        subprocess.run(
+            ["ffmpeg", "-i", ogg_path, "-ar", "16000", "-ac", "1", mp3_path],
+            capture_output=True
+        )
+
+        # Whisper orqali transkripsiya
+        from bot.utils.stt import transcribe_audio
+        import asyncio
+        loop = asyncio.get_event_loop()
+        text = await loop.run_in_executor(None, transcribe_audio, mp3_path)
+
+        if not text or not text.strip():
+            if lang == "lang_rus":
+                await status_msg.edit_text("❌ Не удалось распознать речь. Попробуйте снова.")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("❌ Nutq aniqlanmadi. Qayta urinib ko'ring.")
+            else:
+                await status_msg.edit_text("❌ Нутқ аниқланмади. Қайта уриниб кўринг.")
+            return
+
+        # Tahlil
+        if lang == "lang_rus":
+            await status_msg.edit_text("🔍 Контент анализируется...")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("🔍 Mazmun tahlil qilinmoqda...")
+        else:
+            await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
+
+        from bot.utils.analyzer import analyze_content
+        analysis = await loop.run_in_executor(None, analyze_content, text, lang)
+
+        import html
+        result_text = f"🔍 <b>Таҳлил натижаси:</b>\n\n{html.escape(analysis)}"
+
+        if len(result_text) > 4000:
+            await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
+            await message.answer(result_text[4000:], parse_mode="HTML")
+        else:
+            await status_msg.edit_text(result_text, parse_mode="HTML")
+
+    except Exception as e:
+        if lang == "lang_rus":
+            await status_msg.edit_text("❌ Произошла ошибка. Попробуйте снова.")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("❌ Xatolik yuz berdi. Qayta urinib ko'ring.")
+        else:
+            await status_msg.edit_text("❌ Хато юз берди. Қайта уриниб кўринг.")
+    finally:
+        if tmp_dir and os.path.exists(tmp_dir):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
 @router.message(F.text.func(lambda text: extract_reel_url(text) is not None))
 async def handle_reel(message: Message):
     url = extract_reel_url(message.text)
