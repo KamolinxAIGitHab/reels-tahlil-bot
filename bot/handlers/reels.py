@@ -48,14 +48,14 @@ def extract_post_url(text: str) -> str | None:
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
-        "👋 Assalomu alaykum!\n\n"
-        "🤖 Men <b>ReelsTahlil Bot</b>man.\n\n"
-        "📌 Men quyidagilarni tahlil qila olaman:\n"
+        "👋 Assalomu alaykum! / Салом! / Привет!\n\n"
+        "🤖 <b>ReelsTahlil Bot</b>\n\n"
+        "📌 Tahlil qila olaman / Таҳлил қила оламан / Могу анализировать:\n"
         "🎬 Instagram Reels (video)\n"
-        "🖼 Instagram rasm postlari\n"
-        "🎠 Instagram karusel postlari\n"
-        "📝 Instagram matn postlari\n\n"
-        "🌐 Avval tilni tanlang:",
+        "🖼 Instagram rasm / расм постлари\n"
+        "🎠 Instagram karusel / карусель постлари\n"
+        "📝 Instagram matn / матн постлари\n\n"
+        "🌐 Tilni tanlang / Тилни танланг / Выберите язык:",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [
