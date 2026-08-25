@@ -9,7 +9,7 @@ import logging
 from urllib.parse import urlparse
 from bot.utils.downloader import download_reels_audio, download_instagram_image
 from bot.utils.stt import transcribe_audio, UnclearAudioError
-from bot.utils.analyzer import analyze_content, analyze_image_content
+from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_caption_only
 
 router = Router()
 
@@ -75,25 +75,30 @@ async def set_language(callback: CallbackQuery):
 async def handle_post(message: Message):
     text = message.text or ""
     url = extract_post_url(text)
-    if not url:
-        return
     lang = user_language.get(message.from_user.id, "lang_kirill")
-    status_msg = await message.answer("⏳ Расм таҳлил қилиняпти...")
-    tmp_dir = None
+    status_msg = await message.answer("⏳ Пост таҳлил қилиняпти...")
     images = None
     try:
         images, caption = await download_instagram_image(url)
-        if not images:
-            await status_msg.edit_text("❌ Расм юкланмади.")
+        if images:
+            result = await analyze_image_content(images, caption, lang)
+        elif caption:
+            result = await analyze_caption_only(caption, lang)
+        else:
+            await status_msg.edit_text("❌ Постда таҳлил қилишга мазмун топилмади.")
             return
-        result = await analyze_image_content(images, caption, lang)
         if len(result) > 4000:
             await status_msg.edit_text(result[:4000])
             await message.answer(result[4000:])
         else:
             await status_msg.edit_text(result)
     except Exception as e:
-        await status_msg.edit_text("❌ Хато юз берди. Илтимос, бошқа пост ҳаволасини юборинг.")
+        if lang == "lang_rus":
+            await status_msg.edit_text("❌ Произошла ошибка. Попробуйте другую ссылку.")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("❌ Xatolik yuz berdi. Iltimos, boshqa havola yuboring.")
+        else:
+            await status_msg.edit_text("❌ Хато юз берди. Илтимос, бошқа ҳавола юборинг.")
     finally:
         import shutil, os
         if images:
