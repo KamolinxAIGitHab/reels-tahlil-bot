@@ -47,26 +47,52 @@ def _build_ydl_opts(tmp_dir: str) -> dict:
         opts["password"] = INSTAGRAM_PASS
     return opts
 
-async def download_reels_audio(url: str) -> str:
+async def download_reels_audio(url: str):
+    import instaloader
+    import re
+
     output_dir = "downloads"
     os.makedirs(output_dir, exist_ok=True)
-
     tmp_dir = os.path.join(output_dir, str(uuid.uuid4()))
     os.makedirs(tmp_dir, exist_ok=True)
 
     loop = asyncio.get_event_loop()
 
+    def _get_caption():
+        try:
+            L = instaloader.Instaloader(quiet=True)
+            if _COOKIES_FILE:
+                try:
+                    import http.cookiejar
+                    jar = http.cookiejar.MozillaCookieJar(_COOKIES_FILE)
+                    jar.load()
+                    for cookie in jar:
+                        if "instagram" in cookie.domain:
+                            L.context._session.cookies.update(
+                                {cookie.name: cookie.value}
+                            )
+                except Exception:
+                    pass
+            match = re.search(r'/reel/([A-Za-z0-9_-]+)', url)
+            if match:
+                shortcode = match.group(1)
+                post = instaloader.Post.from_shortcode(L.context, shortcode)
+                return post.caption or ""
+        except Exception:
+            return ""
+
     def _download():
         with yt_dlp.YoutubeDL(_build_ydl_opts(tmp_dir)) as ydl:
             ydl.download([url])
-
         for f in os.listdir(tmp_dir):
             if f.endswith((".mp4", ".mov", ".avi", ".mkv", ".webm")):
                 return os.path.join(tmp_dir, f)
+        raise FileNotFoundError("Video topilmadi!")
 
-        raise FileNotFoundError("Video topilmadi! yt-dlp yuklay olmadi.")
+    video_path = await loop.run_in_executor(None, _download)
+    caption = await loop.run_in_executor(None, _get_caption)
 
-    return await loop.run_in_executor(None, _download)
+    return video_path, caption
 
 async def download_instagram_image(url: str):
     import instaloader

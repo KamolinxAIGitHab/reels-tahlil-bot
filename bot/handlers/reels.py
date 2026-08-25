@@ -117,7 +117,7 @@ async def handle_reel(message: Message):
     loop = asyncio.get_running_loop()
 
     try:
-        file_path = await download_reels_audio(url)
+        file_path, reel_caption = await download_reels_audio(url)
         tmp_dir = os.path.dirname(file_path)
         await status_msg.edit_text("🎙 Ovoz tekstga aylantirilmoqda...")
 
@@ -146,6 +146,9 @@ async def handle_reel(message: Message):
             return
 
         logging.info(f"WHISPER MATNI (user_id={message.from_user.id}): {text[:1000]}")
+
+        if reel_caption:
+            text = f"CAPTION:\n{reel_caption}\n\nAUDIO MATNI:\n{text}"
 
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
