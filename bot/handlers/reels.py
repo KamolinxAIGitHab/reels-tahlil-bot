@@ -2,6 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.filters import Command
 import asyncio
+import html
 import os
 import re
 import shutil
@@ -223,11 +224,16 @@ async def handle_reel(message: Message):
 
         analysis = await loop.run_in_executor(None, analyze_content, text, lang)
 
-        if len(analysis) > 4000:
-            await status_msg.edit_text(analysis[:4000])
-            await message.answer(analysis[4000:])
+        result_text = (
+            f"🔍 <b>Таҳлил натижаси:</b>\n\n"
+            f"{html.escape(analysis)}"
+        )
+
+        if len(result_text) > 4000:
+            await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
+            await message.answer(result_text[4000:], parse_mode="HTML")
         else:
-            await status_msg.edit_text(analysis)
+            await status_msg.edit_text(result_text, parse_mode="HTML")
 
     except Exception as e:
         logging.error(f"Error handling reel: {e}")
