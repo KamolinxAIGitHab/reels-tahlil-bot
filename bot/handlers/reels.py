@@ -141,7 +141,9 @@ async def handle_post(message: Message):
     status_msg = await message.answer("⏳ Пост таҳлил қилиняпти...")
     images = None
     try:
+        await status_msg.edit_text("⬇️ Расм юкланяпти...")
         images, caption = await download_instagram_image(url)
+        await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
         if images:
             result = await analyze_image_content(images, caption, lang)
         elif caption:
@@ -179,9 +181,10 @@ async def handle_reel(message: Message):
     loop = asyncio.get_running_loop()
 
     try:
+        await status_msg.edit_text("⬇️ Видео юкланяпти...")
         file_path, reel_caption = await download_reels_audio(url)
         tmp_dir = os.path.dirname(file_path)
-        await status_msg.edit_text("🎙 Ovoz tekstga aylantirilmoqda...")
+        await status_msg.edit_text("🎙 Аудио матнга айлантирилаяпти...")
 
         try:
             text = await loop.run_in_executor(None, transcribe_audio, file_path)
@@ -216,7 +219,7 @@ async def handle_reel(message: Message):
             os.remove(file_path)
             file_path = None
 
-        await status_msg.edit_text("🔍 Tahlil qilinmoqda...")
+        await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
 
         analysis = await loop.run_in_executor(None, analyze_content, text, lang)
 
