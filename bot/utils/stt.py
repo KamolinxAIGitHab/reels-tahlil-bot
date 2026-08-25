@@ -57,10 +57,13 @@ def transcribe_audio(file_path: str, language: str = "uz") -> str:
         logging.warning(f"Audio tekshiruvi muvaffaqiyatsiz, davom etilmoqda: {e}")
 
     with open(file_path, "rb") as audio_file:
-        transcript = client.audio.transcriptions.create(
-            model="whisper-1",
-            file=audio_file,
-            language=language,
-            temperature=0,
-        )
-    return transcript.text
+        transcription_params = {
+            "model": "whisper-1",
+            "file": audio_file,
+            "temperature": 0,
+        }
+        if language:
+            transcription_params["language"] = language
+
+        response = client.audio.transcriptions.create(**transcription_params)
+    return response.text
