@@ -7,9 +7,9 @@ import re
 import shutil
 import logging
 from urllib.parse import urlparse
-from bot.utils.downloader import download_reels_audio
+from bot.utils.downloader import download_reels_audio, download_instagram_image
 from bot.utils.stt import transcribe_audio, UnclearAudioError
-from bot.utils.analyzer import analyze_content
+from bot.utils.analyzer import analyze_content, analyze_image_content
 
 router = Router()
 
@@ -39,6 +39,11 @@ def extract_reel_url(text: str | None) -> str | None:
 
     return candidate
 
+def extract_post_url(text: str) -> str | None:
+    pattern = r'https?://(?:www\.)?instagram\.com/p/[A-Za-z0-9_-]+/?'
+    match = re.search(pattern, text)
+    return match.group(0) if match else None
+
 def lang_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🇺🇿 Ўзбекча (Кирилл)", callback_data="lang_kirill")],
@@ -65,6 +70,36 @@ async def set_language(callback: CallbackQuery):
     }
     await callback.message.edit_text(confirmations[lang])
     await callback.answer()
+
+@router.message(F.text.func(lambda text: extract_post_url(text) is not None))
+async def handle_post(message: Message):
+    text = message.text or ""
+    url = extract_post_url(text)
+    if not url:
+        return
+    lang = user_language.get(message.from_user.id, "lang_kirill")
+    status_msg = await message.answer("⏳ Расм таҳлил қилиняпти...")
+    tmp_dir = None
+    images = None
+    try:
+        images, caption = await download_instagram_image(url)
+        if not images:
+            await status_msg.edit_text("❌ Расм юкланмади.")
+            return
+        result = await analyze_image_content(images, caption, lang)
+        if len(result) > 4000:
+            await status_msg.edit_text(result[:4000])
+            await message.answer(result[4000:])
+        else:
+            await status_msg.edit_text(result)
+    except Exception as e:
+        await status_msg.edit_text(f"❌ Хatolik: {str(e)}")
+    finally:
+        import shutil, os
+        if images:
+            tmp_dir = os.path.dirname(images[0])
+            if tmp_dir and os.path.exists(tmp_dir):
+                shutil.rmtree(tmp_dir, ignore_errors=True)
 
 @router.message(F.text.func(lambda text: extract_reel_url(text) is not None))
 async def handle_reel(message: Message):

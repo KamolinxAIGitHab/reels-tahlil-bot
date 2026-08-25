@@ -67,3 +67,40 @@ async def download_reels_audio(url: str) -> str:
         raise FileNotFoundError("Video topilmadi! yt-dlp yuklay olmadi.")
 
     return await loop.run_in_executor(None, _download)
+
+def _build_ydl_opts_image(tmp_dir: str) -> dict:
+    opts = {
+        "outtmpl": os.path.join(tmp_dir, "%(id)s_%(autonumber)s.%(ext)s"),
+        "quiet": True,
+        "no_warnings": True,
+    }
+    if _COOKIES_FILE:
+        opts["cookiefile"] = _COOKIES_FILE
+    elif INSTAGRAM_USER and INSTAGRAM_PASS:
+        opts["username"] = INSTAGRAM_USER
+        opts["password"] = INSTAGRAM_PASS
+    return opts
+
+async def download_instagram_image(url: str) -> tuple[list[str], str]:
+    output_dir = "downloads"
+    os.makedirs(output_dir, exist_ok=True)
+
+    tmp_dir = os.path.join(output_dir, str(uuid.uuid4()))
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    loop = asyncio.get_event_loop()
+
+    def _download():
+        with yt_dlp.YoutubeDL(_build_ydl_opts_image(tmp_dir)) as ydl:
+            info = ydl.extract_info(url, download=True)
+
+        caption = (info.get("description") or "") if info else ""
+
+        images = sorted(
+            os.path.join(tmp_dir, f)
+            for f in os.listdir(tmp_dir)
+            if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
+        )
+        return images, caption
+
+    return await loop.run_in_executor(None, _download)
