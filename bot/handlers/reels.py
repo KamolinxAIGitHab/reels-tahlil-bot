@@ -205,6 +205,7 @@ async def handle_account(message: Message):
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
     except asyncio.TimeoutError:
+        logging.warning(f"Akkount tahlili timeout: user_id={message.from_user.id} username={username}")
         if lang == "lang_rus":
             await status_msg.edit_text("⏳ Instagram слишком долго не отвечает. Попробуйте позже.")
         elif lang == "lang_lotin":
@@ -212,6 +213,7 @@ async def handle_account(message: Message):
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
     except Exception as e:
+        logging.error(f"Akkount tahlili xatosi: user_id={message.from_user.id} username={username} error={e}")
         err = str(e).lower()
         if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
             if lang == "lang_rus":

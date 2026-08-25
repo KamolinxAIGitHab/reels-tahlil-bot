@@ -195,7 +195,26 @@ async def download_account_posts(username: str) -> list:
             save_metadata=False,
         )
 
-        profile = instaloader.Profile.from_username(L.context, username)
+        # web_profile_info endpoint'i 429'ni tez-tez qaytaradi (hatto
+        # autentifikatsiyalangan sessiyada ham) — sleep=False tufayli
+        # instaloader'ning ichki retry'i o'chirilgan, shuning uchun
+        # bu yerda qo'lda backoff bilan qayta urinamiz.
+        profile = None
+        last_exc = None
+        for delay in (0, 5, 15):
+            if delay:
+                time.sleep(delay)
+            try:
+                profile = instaloader.Profile.from_username(L.context, username)
+                break
+            except Exception as e:
+                last_exc = e
+                msg = str(e).lower()
+                if not any(k in msg for k in ("429", "too many", "wait a few minutes")):
+                    raise
+        if profile is None:
+            raise last_exc
+
         posts = []
 
         for post in itertools.islice(profile.get_posts(), 6):
@@ -211,4 +230,4 @@ async def download_account_posts(username: str) -> list:
 
         return posts, profile.biography or ""
 
-    return await asyncio.wait_for(loop.run_in_executor(None, _fetch), timeout=45)
+    return await asyncio.wait_for(loop.run_in_executor(None, _fetch), timeout=90)
