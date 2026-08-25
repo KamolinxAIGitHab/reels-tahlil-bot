@@ -196,6 +196,7 @@ async def download_account_posts(username: str) -> list:
 
         profile = instaloader.Profile.from_username(L.context, username)
         posts = []
+        import time
 
         for post in itertools.islice(profile.get_posts(), 6):
             posts.append({
@@ -206,6 +207,7 @@ async def download_account_posts(username: str) -> list:
                 "date": str(post.date_utc)[:10],
                 "url": f"https://www.instagram.com/p/{post.shortcode}/",
             })
+            time.sleep(2)  # har post orasida 2 soniya kutish
 
         return posts, profile.biography or ""
 
