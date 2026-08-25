@@ -41,11 +41,14 @@ def extract_reel_url(text: str | None) -> str | None:
     return candidate
 
 def extract_post_url(text: str) -> str | None:
+    """Xabardan Instagram post (/p/...) URL'ini ajratib oladi."""
     pattern = r'https?://(?:www\.)?instagram\.com/p/[A-Za-z0-9_-]+/?'
     match = re.search(pattern, text)
     return match.group(0) if match else None
 
 def extract_account_url(text: str) -> str | None:
+    """Xabardan Instagram profil URL'ini ajratib, username'ni qaytaradi.
+    /p/, /reel/ kabi maxsus yo'llarni username sifatida qabul qilmaydi."""
     pattern = r'https?://(?:www\.)?instagram\.com/([A-Za-z0-9_.]+)/?(?:\?.*)?$'
     match = re.search(pattern, text)
     if match:
@@ -158,7 +161,7 @@ async def handle_account(message: Message):
     lang = user_language.get(message.from_user.id, "lang_kirill")
 
     if lang == "lang_rus":
-        status_msg = await message.answer("⏳ Аккаунт таҳлил қилиняпти...")
+        status_msg = await message.answer("⏳ Анализируется аккаунт...")
     elif lang == "lang_lotin":
         status_msg = await message.answer("⏳ Akkount tahlil qilinmoqda...")
     else:
@@ -166,7 +169,7 @@ async def handle_account(message: Message):
 
     try:
         if lang == "lang_rus":
-            await status_msg.edit_text("⬇️ Постлар юкланяпти...")
+            await status_msg.edit_text("⬇️ Посты загружаются...")
         elif lang == "lang_lotin":
             await status_msg.edit_text("⬇️ Postlar yuklanmoqda...")
         else:
@@ -176,7 +179,7 @@ async def handle_account(message: Message):
 
         if not posts:
             if lang == "lang_rus":
-                await status_msg.edit_text("❌ Аккаунт топилмади ёки постлар йўқ.")
+                await status_msg.edit_text("❌ Аккаунт не найден или нет постов.")
             elif lang == "lang_lotin":
                 await status_msg.edit_text("❌ Akkount topilmadi yoki postlar yo'q.")
             else:
@@ -192,7 +195,6 @@ async def handle_account(message: Message):
 
         result = await analyze_account(posts, biography, username, lang)
 
-        import html
         result_text = f"👤 <b>@{username} аккаунт таҳлили:</b>\n\n{html.escape(result)}"
 
         if len(result_text) > 4000:
@@ -285,7 +287,6 @@ async def handle_post(message: Message):
             else:
                 await status_msg.edit_text("❌ Хато юз берди. Илтимос, бошқа ҳавола юборинг.")
     finally:
-        import shutil, os
         if images:
             tmp_dir = os.path.dirname(images[0])
             if tmp_dir and os.path.exists(tmp_dir):
@@ -308,7 +309,7 @@ async def handle_voice(message: Message):
         voice = message.voice
         file = await message.bot.get_file(voice.file_id)
 
-        import tempfile, os, shutil
+        import tempfile
         tmp_dir = tempfile.mkdtemp()
         ogg_path = os.path.join(tmp_dir, "voice.ogg")
         mp3_path = os.path.join(tmp_dir, "voice.mp3")
@@ -325,15 +326,18 @@ async def handle_voice(message: Message):
             await status_msg.edit_text("🎙 Аудио матнга айлантирилаяпти...")
 
         import subprocess
-        subprocess.run(
-            ["ffmpeg", "-i", ogg_path, "-ar", "16000", "-ac", "1", mp3_path],
-            capture_output=True
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: subprocess.run(
+                ["ffmpeg", "-i", ogg_path, "-ar", "16000", "-ac", "1", mp3_path],
+                capture_output=True,
+                timeout=60,
+            ),
         )
 
         # Whisper orqali transkripsiya
         from bot.utils.stt import transcribe_audio
-        import asyncio
-        loop = asyncio.get_event_loop()
         whisper_lang = "ru" if lang == "lang_rus" else None
         text = await loop.run_in_executor(None, transcribe_audio, mp3_path, whisper_lang)
 
@@ -357,7 +361,6 @@ async def handle_voice(message: Message):
         from bot.utils.analyzer import analyze_content
         analysis = await loop.run_in_executor(None, analyze_content, text, lang)
 
-        import html
         result_text = f"🔍 <b>Таҳлил натижаси:</b>\n\n{html.escape(analysis)}"
 
         if len(result_text) > 4000:
@@ -387,13 +390,29 @@ async def handle_voice(message: Message):
                 "• Хабар жуда қисқа (1.5 сониядан кам)\n\n"
                 "Илтимос, аниқроқ гапириб қайта юборинг."
             )
-    except Exception as e:
+    except subprocess.TimeoutExpired:
         if lang == "lang_rus":
-            await status_msg.edit_text("❌ Произошла ошибка. Попробуйте снова.")
+            await status_msg.edit_text("⏳ Обработка аудио заняла слишком много времени. Попробуйте снова.")
         elif lang == "lang_lotin":
-            await status_msg.edit_text("❌ Xatolik yuz berdi. Qayta urinib ko'ring.")
+            await status_msg.edit_text("⏳ Audio qayta ishlash juda uzoq davom etdi. Qayta urinib ko'ring.")
         else:
-            await status_msg.edit_text("❌ Хато юз берди. Қайта уриниб кўринг.")
+            await status_msg.edit_text("⏳ Аудио қайта ишлаш жуда узоқ давом этди. Қайта уриниб кўринг.")
+    except Exception as e:
+        err = str(e).lower()
+        if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
+            if lang == "lang_rus":
+                await status_msg.edit_text("⏳ Слишком много запросов. Повторите через 10-15 минут.")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("⏳ So'rovlar juda ko'p. 10-15 daqiqadan so'ng qayta urining.")
+            else:
+                await status_msg.edit_text("⏳ Сўровлар жуда кўп. 10-15 дақиқадан сўнг қайта уриниб кўринг.")
+        else:
+            if lang == "lang_rus":
+                await status_msg.edit_text("❌ Произошла ошибка. Попробуйте снова.")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("❌ Xatolik yuz berdi. Qayta urinib ko'ring.")
+            else:
+                await status_msg.edit_text("❌ Хато юз берди. Қайта уриниб кўринг.")
     finally:
         if tmp_dir and os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -480,6 +499,13 @@ async def handle_reel(message: Message):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
+    except asyncio.TimeoutError:
+        if lang == "lang_rus":
+            await status_msg.edit_text("⏳ Instagram слишком долго не отвечает. Попробуйте позже.")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("⏳ Instagram javob berishda kechikmoqda. Keyinroq urinib ko'ring.")
+        else:
+            await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
     except Exception as e:
         logging.error(f"Error handling reel: {e}")
         err = str(e).lower()

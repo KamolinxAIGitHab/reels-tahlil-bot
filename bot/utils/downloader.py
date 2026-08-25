@@ -3,6 +3,8 @@ import os
 import uuid
 import asyncio
 import base64
+import http.cookiejar
+import instaloader
 
 INSTAGRAM_USER    = os.getenv("INSTAGRAM_USERNAME")
 INSTAGRAM_PASS    = os.getenv("INSTAGRAM_PASSWORD")
@@ -47,8 +49,40 @@ def _build_ydl_opts(tmp_dir: str) -> dict:
         opts["password"] = INSTAGRAM_PASS
     return opts
 
+def _load_cookies_into(L: "instaloader.Instaloader") -> None:
+    """cookies.txt (Netscape format) dagi instagram cookie'larini
+    instaloader sessiyasiga yuklaydi."""
+    if not _COOKIES_FILE:
+        return
+    try:
+        jar = http.cookiejar.MozillaCookieJar(_COOKIES_FILE)
+        jar.load()
+        cookie_dict = {c.name: c.value for c in jar if "instagram" in c.domain}
+        if cookie_dict:
+            L.context._session.cookies.update(cookie_dict)
+    except Exception:
+        pass
+
+def _new_instaloader(**extra_opts) -> "instaloader.Instaloader":
+    """Barcha Instagram funksiyalari uchun umumiy Instaloader instance.
+    Ichki retry/backoff o'chirilgan (sleep=False, max_connection_attempts=1)
+    va qat'iy request_timeout qo'yilgan — Instagram javob bermay qolganda
+    funksiya minutlab osilib qolmasligi uchun."""
+    opts = dict(
+        quiet=True,
+        sleep=False,
+        max_connection_attempts=1,
+        request_timeout=15.0,
+    )
+    opts.update(extra_opts)
+    L = instaloader.Instaloader(**opts)
+    _load_cookies_into(L)
+    return L
+
 async def download_reels_audio(url: str):
-    import instaloader
+    """Instagram Reels videosini yt-dlp orqali yuklaydi va (video_path, caption)
+    qaytaradi. Caption instaloader orqali alohida, best-effort tarzda olinadi —
+    topilmasa yoki timeout bo'lsa, bo'sh satr qaytariladi."""
     import re
 
     output_dir = "downloads"
@@ -60,24 +94,7 @@ async def download_reels_audio(url: str):
 
     def _get_caption():
         try:
-            L = instaloader.Instaloader(
-                quiet=True,
-                sleep=False,
-                max_connection_attempts=1,
-                request_timeout=15.0,
-            )
-            if _COOKIES_FILE:
-                try:
-                    import http.cookiejar
-                    jar = http.cookiejar.MozillaCookieJar(_COOKIES_FILE)
-                    jar.load()
-                    for cookie in jar:
-                        if "instagram" in cookie.domain:
-                            L.context._session.cookies.update(
-                                {cookie.name: cookie.value}
-                            )
-                except Exception:
-                    pass
+            L = _new_instaloader()
             match = re.search(r'/reel/([A-Za-z0-9_-]+)', url)
             if match:
                 shortcode = match.group(1)
@@ -94,7 +111,7 @@ async def download_reels_audio(url: str):
                 return os.path.join(tmp_dir, f)
         raise FileNotFoundError("Video topilmadi!")
 
-    video_path = await loop.run_in_executor(None, _download)
+    video_path = await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=90)
     try:
         caption = await asyncio.wait_for(loop.run_in_executor(None, _get_caption), timeout=20)
     except asyncio.TimeoutError:
@@ -103,7 +120,8 @@ async def download_reels_audio(url: str):
     return video_path, caption
 
 async def download_instagram_image(url: str):
-    import instaloader
+    """Instagram post (/p/...) rasmlarini yuklaydi — bitta rasm yoki karusel
+    (GraphSidecar) bo'lishi mumkin. (images: list[str], caption: str) qaytaradi."""
     import re
 
     output_dir = "downloads"
@@ -114,33 +132,15 @@ async def download_instagram_image(url: str):
     loop = asyncio.get_event_loop()
 
     def _download():
-        L = instaloader.Instaloader(
+        L = _new_instaloader(
             download_pictures=True,
             download_videos=False,
             download_video_thumbnails=False,
             download_geotags=False,
             download_comments=False,
             save_metadata=False,
-            quiet=True,
             dirname_pattern=tmp_dir,
-            sleep=False,
-            max_connection_attempts=1,
-            request_timeout=15.0,
         )
-
-        cookie_jar = {}
-        if _COOKIES_FILE:
-            try:
-                import http.cookiejar
-                jar = http.cookiejar.MozillaCookieJar(_COOKIES_FILE)
-                jar.load()
-                for cookie in jar:
-                    if "instagram" in cookie.domain:
-                        cookie_jar[cookie.name] = cookie.value
-                if cookie_jar:
-                    L.context._session.cookies.update(cookie_jar)
-            except Exception:
-                pass
 
         match = re.search(r'/p/([A-Za-z0-9_-]+)', url)
         if not match:
@@ -176,41 +176,23 @@ async def download_account_posts(username: str) -> list:
     Instagram akkountidan ohirgi 6 postni yuklaydi.
     Har post uchun caption, typename, likes, comments, date, url qaytaradi.
     """
-    import instaloader
     import itertools
+    import time
 
     loop = asyncio.get_event_loop()
 
     def _fetch():
-        L = instaloader.Instaloader(
+        L = _new_instaloader(
             download_pictures=False,
             download_videos=False,
             download_video_thumbnails=False,
             download_geotags=False,
             download_comments=False,
             save_metadata=False,
-            quiet=True,
-            sleep=False,
-            max_connection_attempts=1,
-            request_timeout=15.0,
         )
-
-        if _COOKIES_FILE:
-            try:
-                import http.cookiejar
-                jar = http.cookiejar.MozillaCookieJar(_COOKIES_FILE)
-                jar.load()
-                for cookie in jar:
-                    if "instagram" in cookie.domain:
-                        L.context._session.cookies.update(
-                            {cookie.name: cookie.value}
-                        )
-            except Exception:
-                pass
 
         profile = instaloader.Profile.from_username(L.context, username)
         posts = []
-        import time
 
         for post in itertools.islice(profile.get_posts(), 6):
             posts.append({

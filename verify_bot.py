@@ -24,11 +24,12 @@ def test_downloader_mock():
         def download(self, urls):
             open(os.path.join(self._tmp_dir, "video.mp4"), "w").close()
 
-    with patch('bot.utils.downloader.yt_dlp.YoutubeDL', FakeYDL):
+    with patch('bot.utils.downloader.yt_dlp.YoutubeDL', FakeYDL), \
+         patch('bot.utils.downloader._new_instaloader', side_effect=Exception("no network in test")):
         url = "https://www.instagram.com/reel/C-xyz/"
         try:
-            path = asyncio.run(download_reels_audio(url))
-            print(f"Downloader test passed: {path}")
+            path, caption = asyncio.run(download_reels_audio(url))
+            print(f"Downloader test passed: {path} (caption={caption!r})")
             shutil.rmtree(os.path.dirname(path), ignore_errors=True)
         except Exception as e:
             print(f"Downloader test failed: {e}")
