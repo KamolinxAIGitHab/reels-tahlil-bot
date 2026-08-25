@@ -6,6 +6,7 @@ import html
 import os
 import re
 import shutil
+import subprocess
 import logging
 from urllib.parse import urlparse
 from bot.utils.downloader import download_reels_audio, download_instagram_image, download_account_posts
@@ -256,7 +257,12 @@ async def handle_post(message: Message):
         elif caption:
             result = await analyze_caption_only(caption, lang)
         else:
-            await status_msg.edit_text("❌ Постда таҳлил қилишга мазмун топилмади.")
+            if lang == "lang_rus":
+                await status_msg.edit_text("❌ В посте не найдено содержимого для анализа.")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("❌ Postda tahlil qilishga mazmun topilmadi.")
+            else:
+                await status_msg.edit_text("❌ Постда таҳлил қилишга мазмун топилмади.")
             return
         if len(result) > 4000:
             await status_msg.edit_text(result[:4000])
@@ -325,7 +331,6 @@ async def handle_voice(message: Message):
         else:
             await status_msg.edit_text("🎙 Аудио матнга айлантирилаяпти...")
 
-        import subprocess
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None,
@@ -422,7 +427,12 @@ async def handle_reel(message: Message):
     url = extract_reel_url(message.text)
     lang = user_language.get(message.from_user.id, "lang_kirill")
     logging.info(f"REELS SO'ROV: user_id={message.from_user.id} url={url}")
-    status_msg = await message.answer("⏳ Video yuklab olinmoqda...")
+    if lang == "lang_rus":
+        status_msg = await message.answer("⏳ Видео загружается...")
+    elif lang == "lang_lotin":
+        status_msg = await message.answer("⏳ Video yuklab olinmoqda...")
+    else:
+        status_msg = await message.answer("⏳ Видео юклаб олинмоқда...")
     file_path = None
     tmp_dir = None
     loop = asyncio.get_running_loop()

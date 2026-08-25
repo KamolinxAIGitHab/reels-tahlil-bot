@@ -128,6 +128,7 @@ async def download_instagram_image(url: str):
     """Instagram post (/p/...) rasmlarini yuklaydi — bitta rasm yoki karusel
     (GraphSidecar) bo'lishi mumkin. (images: list[str], caption: str) qaytaradi."""
     import re
+    import urllib.request
 
     output_dir = "downloads"
     os.makedirs(output_dir, exist_ok=True)
@@ -160,12 +161,10 @@ async def download_instagram_image(url: str):
             for i, node in enumerate(post.get_sidecar_nodes()):
                 if not node.is_video:
                     img_path = os.path.join(tmp_dir, f"slide_{i}.jpg")
-                    import urllib.request
                     urllib.request.urlretrieve(node.display_url, img_path)
                     images.append(img_path)
         elif post.typename == "GraphImage":
             img_path = os.path.join(tmp_dir, f"{shortcode}.jpg")
-            import urllib.request
             urllib.request.urlretrieve(post.url, img_path)
             images.append(img_path)
 
