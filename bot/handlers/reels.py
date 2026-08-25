@@ -93,7 +93,7 @@ async def handle_post(message: Message):
         else:
             await status_msg.edit_text(result)
     except Exception as e:
-        await status_msg.edit_text(f"❌ Хatolik: {str(e)}")
+        await status_msg.edit_text("❌ Хато юз берди. Илтимос, бошқа пост ҳаволасини юборинг.")
     finally:
         import shutil, os
         if images:
@@ -179,11 +179,16 @@ async def handle_reel(message: Message):
             }
             await status_msg.edit_text(rate_messages.get(lang, rate_messages["lang_kirill"]))
         else:
-            await status_msg.edit_text(f"❌ Xatolik: {str(e)}")
+            error_messages = {
+                "lang_kirill": "❌ Хато юз берди. Илтимос, бошқа Reels ҳаволасини юборинг.",
+                "lang_lotin": "❌ Xato yuz berdi. Iltimos, boshqa Reels havolasini yuboring.",
+                "lang_rus": "❌ Произошла ошибка. Пожалуйста, отправьте другую ссылку на Reels.",
+            }
+            await status_msg.edit_text(error_messages.get(lang, error_messages["lang_kirill"]))
     finally:
         if tmp_dir and os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
 @router.message()
 async def echo_all(message: Message):
-    await message.answer("📎 Iltimos, Instagram Reels havolasini yuboring.")
+    await message.answer("📎 Илтимос, Instagram Reels ёки пост ҳаволасини юборинг.")
