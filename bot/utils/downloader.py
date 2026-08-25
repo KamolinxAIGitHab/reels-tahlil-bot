@@ -60,6 +60,11 @@ def _load_cookies_into(L: "instaloader.Instaloader") -> None:
         cookie_dict = {c.name: c.value for c in jar if "instagram" in c.domain}
         if cookie_dict:
             L.context._session.cookies.update(cookie_dict)
+            L.context._session.headers.update({
+                'X-IG-App-ID': '936619743392459',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Referer': 'https://www.instagram.com/',
+            })
     except Exception:
         pass
 
