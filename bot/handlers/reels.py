@@ -201,13 +201,29 @@ async def handle_account(message: Message):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
-    except Exception as e:
+    except asyncio.TimeoutError:
         if lang == "lang_rus":
-            await status_msg.edit_text("❌ Произошла ошибка. Аккаунт закрытый или не существует.")
+            await status_msg.edit_text("⏳ Instagram слишком долго не отвечает. Попробуйте позже.")
         elif lang == "lang_lotin":
-            await status_msg.edit_text("❌ Xatolik yuz berdi. Akkount yopiq yoki mavjud emas.")
+            await status_msg.edit_text("⏳ Instagram javob berishda kechikmoqda. Keyinroq urinib ko'ring.")
         else:
-            await status_msg.edit_text("❌ Хато юз берди. Аккаунт ёпиқ ёки мавжуд эмас.")
+            await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
+    except Exception as e:
+        err = str(e).lower()
+        if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
+            if lang == "lang_rus":
+                await status_msg.edit_text("⏳ Instagram временно ограничил запросы. Повторите через 10-15 минут.")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("⏳ Instagram vaqtinchalik cheklov qo'ydi. 10-15 daqiqadan so'ng qayta urining.")
+            else:
+                await status_msg.edit_text("⏳ Instagram вақтинчалик чеклов қўйди. 10-15 дақиқадан сўнг қайта уриниб кўринг.")
+        else:
+            if lang == "lang_rus":
+                await status_msg.edit_text("❌ Произошла ошибка. Аккаунт закрытый или не существует.")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("❌ Xatolik yuz berdi. Akkount yopiq yoki mavjud emas.")
+            else:
+                await status_msg.edit_text("❌ Хато юз берди. Аккаунт ёпиқ ёки мавжуд эмас.")
 
 @router.message(F.text.func(lambda text: extract_post_url(text) is not None))
 async def handle_post(message: Message):
@@ -245,13 +261,29 @@ async def handle_post(message: Message):
             await message.answer(result[4000:])
         else:
             await status_msg.edit_text(result)
-    except Exception as e:
+    except asyncio.TimeoutError:
         if lang == "lang_rus":
-            await status_msg.edit_text("❌ Произошла ошибка. Попробуйте другую ссылку.")
+            await status_msg.edit_text("⏳ Instagram слишком долго не отвечает. Попробуйте позже.")
         elif lang == "lang_lotin":
-            await status_msg.edit_text("❌ Xatolik yuz berdi. Iltimos, boshqa havola yuboring.")
+            await status_msg.edit_text("⏳ Instagram javob berishda kechikmoqda. Keyinroq urinib ko'ring.")
         else:
-            await status_msg.edit_text("❌ Хато юз берди. Илтимос, бошқа ҳавола юборинг.")
+            await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
+    except Exception as e:
+        err = str(e).lower()
+        if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
+            if lang == "lang_rus":
+                await status_msg.edit_text("⏳ Instagram временно ограничил запросы. Повторите через 10-15 минут.")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("⏳ Instagram vaqtinchalik cheklov qo'ydi. 10-15 daqiqadan so'ng qayta urining.")
+            else:
+                await status_msg.edit_text("⏳ Instagram вақтинчалик чеклов қўйди. 10-15 дақиқадан сўнг қайта уриниб кўринг.")
+        else:
+            if lang == "lang_rus":
+                await status_msg.edit_text("❌ Произошла ошибка. Попробуйте другую ссылку.")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("❌ Xatolik yuz berdi. Iltimos, boshqa havola yuboring.")
+            else:
+                await status_msg.edit_text("❌ Хато юз берди. Илтимос, бошқа ҳавола юборинг.")
     finally:
         import shutil, os
         if images:

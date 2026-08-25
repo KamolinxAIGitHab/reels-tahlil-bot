@@ -60,7 +60,12 @@ async def download_reels_audio(url: str):
 
     def _get_caption():
         try:
-            L = instaloader.Instaloader(quiet=True)
+            L = instaloader.Instaloader(
+                quiet=True,
+                sleep=False,
+                max_connection_attempts=1,
+                request_timeout=15.0,
+            )
             if _COOKIES_FILE:
                 try:
                     import http.cookiejar
@@ -90,7 +95,10 @@ async def download_reels_audio(url: str):
         raise FileNotFoundError("Video topilmadi!")
 
     video_path = await loop.run_in_executor(None, _download)
-    caption = await loop.run_in_executor(None, _get_caption)
+    try:
+        caption = await asyncio.wait_for(loop.run_in_executor(None, _get_caption), timeout=20)
+    except asyncio.TimeoutError:
+        caption = ""
 
     return video_path, caption
 
@@ -115,6 +123,9 @@ async def download_instagram_image(url: str):
             save_metadata=False,
             quiet=True,
             dirname_pattern=tmp_dir,
+            sleep=False,
+            max_connection_attempts=1,
+            request_timeout=15.0,
         )
 
         cookie_jar = {}
@@ -158,7 +169,7 @@ async def download_instagram_image(url: str):
 
         return images, caption
 
-    return await loop.run_in_executor(None, _download)
+    return await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=45)
 
 async def download_account_posts(username: str) -> list:
     """
@@ -179,6 +190,9 @@ async def download_account_posts(username: str) -> list:
             download_comments=False,
             save_metadata=False,
             quiet=True,
+            sleep=False,
+            max_connection_attempts=1,
+            request_timeout=15.0,
         )
 
         if _COOKIES_FILE:
@@ -211,4 +225,4 @@ async def download_account_posts(username: str) -> list:
 
         return posts, profile.biography or ""
 
-    return await loop.run_in_executor(None, _fetch)
+    return await asyncio.wait_for(loop.run_in_executor(None, _fetch), timeout=45)
