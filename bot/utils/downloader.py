@@ -159,3 +159,54 @@ async def download_instagram_image(url: str):
         return images, caption
 
     return await loop.run_in_executor(None, _download)
+
+async def download_account_posts(username: str) -> list:
+    """
+    Instagram akkountidan ohirgi 6 postni yuklaydi.
+    Har post uchun caption, typename, likes, comments, date, url qaytaradi.
+    """
+    import instaloader
+    import itertools
+
+    loop = asyncio.get_event_loop()
+
+    def _fetch():
+        L = instaloader.Instaloader(
+            download_pictures=False,
+            download_videos=False,
+            download_video_thumbnails=False,
+            download_geotags=False,
+            download_comments=False,
+            save_metadata=False,
+            quiet=True,
+        )
+
+        if _COOKIES_FILE:
+            try:
+                import http.cookiejar
+                jar = http.cookiejar.MozillaCookieJar(_COOKIES_FILE)
+                jar.load()
+                for cookie in jar:
+                    if "instagram" in cookie.domain:
+                        L.context._session.cookies.update(
+                            {cookie.name: cookie.value}
+                        )
+            except Exception:
+                pass
+
+        profile = instaloader.Profile.from_username(L.context, username)
+        posts = []
+
+        for post in itertools.islice(profile.get_posts(), 6):
+            posts.append({
+                "caption": post.caption or "",
+                "typename": post.typename,
+                "likes": post.likes,
+                "comments": post.comments,
+                "date": str(post.date_utc)[:10],
+                "url": f"https://www.instagram.com/p/{post.shortcode}/",
+            })
+
+        return posts, profile.biography or ""
+
+    return await loop.run_in_executor(None, _fetch)

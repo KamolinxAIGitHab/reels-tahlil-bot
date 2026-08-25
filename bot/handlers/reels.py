@@ -8,9 +8,9 @@ import re
 import shutil
 import logging
 from urllib.parse import urlparse
-from bot.utils.downloader import download_reels_audio, download_instagram_image
+from bot.utils.downloader import download_reels_audio, download_instagram_image, download_account_posts
 from bot.utils.stt import transcribe_audio, UnclearAudioError
-from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_caption_only
+from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_caption_only, analyze_account
 
 router = Router()
 
@@ -44,6 +44,15 @@ def extract_post_url(text: str) -> str | None:
     pattern = r'https?://(?:www\.)?instagram\.com/p/[A-Za-z0-9_-]+/?'
     match = re.search(pattern, text)
     return match.group(0) if match else None
+
+def extract_account_url(text: str) -> str | None:
+    pattern = r'https?://(?:www\.)?instagram\.com/([A-Za-z0-9_.]+)/?(?:\?.*)?$'
+    match = re.search(pattern, text)
+    if match:
+        username = match.group(1)
+        if username not in ('p', 'reel', 'reels', 'stories', 'explore', 'tv'):
+            return username
+    return None
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
@@ -137,6 +146,64 @@ async def set_language(callback: CallbackQuery):
     }
     await callback.message.edit_text(confirmations[lang])
     await callback.answer()
+
+@router.message(F.text.func(lambda text: extract_account_url(text) is not None and extract_post_url(text) is None and extract_reel_url(text) is None))
+async def handle_account(message: Message):
+    text = message.text or ""
+    username = extract_account_url(text)
+    lang = user_language.get(message.from_user.id, "lang_kirill")
+
+    if lang == "lang_rus":
+        status_msg = await message.answer("⏳ Аккаунт таҳлил қилиняпти...")
+    elif lang == "lang_lotin":
+        status_msg = await message.answer("⏳ Akkount tahlil qilinmoqda...")
+    else:
+        status_msg = await message.answer("⏳ Аккаунт таҳлил қилиняпти...")
+
+    try:
+        if lang == "lang_rus":
+            await status_msg.edit_text("⬇️ Постлар юкланяпти...")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("⬇️ Postlar yuklanmoqda...")
+        else:
+            await status_msg.edit_text("⬇️ Постлар юкланяпти...")
+
+        posts, biography = await download_account_posts(username)
+
+        if not posts:
+            if lang == "lang_rus":
+                await status_msg.edit_text("❌ Аккаунт топилмади ёки постлар йўқ.")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("❌ Akkount topilmadi yoki postlar yo'q.")
+            else:
+                await status_msg.edit_text("❌ Аккаунт топилмади ёки постлар йўқ.")
+            return
+
+        if lang == "lang_rus":
+            await status_msg.edit_text("🔍 Контент анализируется...")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("🔍 Kontent tahlil qilinmoqda...")
+        else:
+            await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
+
+        result = await analyze_account(posts, biography, username, lang)
+
+        import html
+        result_text = f"👤 <b>@{username} аккаунт таҳлили:</b>\n\n{html.escape(result)}"
+
+        if len(result_text) > 4000:
+            await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
+            await message.answer(result_text[4000:], parse_mode="HTML")
+        else:
+            await status_msg.edit_text(result_text, parse_mode="HTML")
+
+    except Exception as e:
+        if lang == "lang_rus":
+            await status_msg.edit_text("❌ Произошла ошибка. Аккаунт закрытый или не существует.")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("❌ Xatolik yuz berdi. Akkount yopiq yoki mavjud emas.")
+        else:
+            await status_msg.edit_text("❌ Хато юз берди. Аккаунт ёпиқ ёки мавжуд эмас.")
 
 @router.message(F.text.func(lambda text: extract_post_url(text) is not None))
 async def handle_post(message: Message):
