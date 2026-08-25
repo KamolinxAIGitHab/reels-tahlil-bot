@@ -44,19 +44,81 @@ def extract_post_url(text: str) -> str | None:
     match = re.search(pattern, text)
     return match.group(0) if match else None
 
-def lang_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🇺🇿 Ўзбекча (Кирилл)", callback_data="lang_kirill")],
-        [InlineKeyboardButton(text="🇺🇿 O'zbekcha (Lotin)",  callback_data="lang_lotin")],
-        [InlineKeyboardButton(text="🇷🇺 Русский",            callback_data="lang_rus")],
-    ])
-
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
-        "Tilni tanlang / Выберите язык / Тилни танланг:",
-        reply_markup=lang_keyboard()
+        "👋 Assalomu alaykum!\n\n"
+        "🤖 Men <b>ReelsTahlil Bot</b>man.\n\n"
+        "📌 Men quyidagilarni tahlil qila olaman:\n"
+        "🎬 Instagram Reels (video)\n"
+        "🖼 Instagram rasm postlari\n"
+        "🎠 Instagram karusel postlari\n"
+        "📝 Instagram matn postlari\n\n"
+        "🌐 Avval tilni tanlang:",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🇺🇿 Ўзбекча (Кирилл)", callback_data="lang_kirill"),
+                InlineKeyboardButton(text="🇺🇿 O'zbekcha (Lotin)", callback_data="lang_lotin"),
+            ],
+            [
+                InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang_rus"),
+            ]
+        ])
     )
+
+@router.message(Command("help"))
+async def cmd_help(message: Message):
+    lang = user_language.get(message.from_user.id, "lang_kirill")
+    if lang == "lang_rus":
+        text = (
+            "📖 <b>Как пользоваться ботом:</b>\n\n"
+            "1️⃣ Откройте Instagram\n"
+            "2️⃣ Найдите Reels или пост\n"
+            "3️⃣ Нажмите 'Поделиться' → 'Скопировать ссылку'\n"
+            "4️⃣ Отправьте ссылку сюда\n\n"
+            "✅ Бот автоматически:\n"
+            "• Скачает видео/фото\n"
+            "• Транскрибирует аудио\n"
+            "• Проверит факты\n"
+            "• Даст оценку контента\n\n"
+            "⚙️ Команды:\n"
+            "/start — начать заново\n"
+            "/help — эта справка"
+        )
+    elif lang == "lang_lotin":
+        text = (
+            "📖 <b>Botdan qanday foydalanish:</b>\n\n"
+            "1️⃣ Instagramni oching\n"
+            "2️⃣ Reels yoki post toping\n"
+            "3️⃣ 'Ulashish' → 'Havolani nusxalash' bosing\n"
+            "4️⃣ Havolani shu yerga yuboring\n\n"
+            "✅ Bot avtomatik:\n"
+            "• Video/rasm yuklab oladi\n"
+            "• Audioni matnga o'giradi\n"
+            "• Faktlarni tekshiradi\n"
+            "• Kontent bahosini beradi\n\n"
+            "⚙️ Buyruqlar:\n"
+            "/start — qaytadan boshlash\n"
+            "/help — ushbu yordam"
+        )
+    else:
+        text = (
+            "📖 <b>Ботдан қандай фойдаланиш:</b>\n\n"
+            "1️⃣ Instagramni очинг\n"
+            "2️⃣ Reels ёки постни топинг\n"
+            "3️⃣ 'Улашиш' → 'Ҳаволани нусхалаш' босинг\n"
+            "4️⃣ Ҳаволани шу ерга юборинг\n\n"
+            "✅ Бот автоматик:\n"
+            "• Видео/расм юклаб олади\n"
+            "• Аудиони матнга ўгиради\n"
+            "• Фактларни текширади\n"
+            "• Контент баҳосини беради\n\n"
+            "⚙️ Буйруқлар:\n"
+            "/start — қайтадан бошлаш\n"
+            "/help — ушбу ёрдам"
+        )
+    await message.answer(text, parse_mode="HTML")
 
 @router.callback_query(F.data.in_({"lang_kirill", "lang_lotin", "lang_rus"}))
 async def set_language(callback: CallbackQuery):
@@ -199,4 +261,11 @@ async def handle_reel(message: Message):
 
 @router.message()
 async def echo_all(message: Message):
-    await message.answer("📎 Илтимос, Instagram Reels ёки пост ҳаволасини юборинг.")
+    lang = user_language.get(message.from_user.id, "lang_kirill")
+    if lang == "lang_rus":
+        text = "📎 Отправьте ссылку на Instagram Reels или пост.\n\nℹ️ /help — справка"
+    elif lang == "lang_lotin":
+        text = "📎 Instagram Reels yoki post havolasini yuboring.\n\nℹ️ /help — yordam"
+    else:
+        text = "📎 Instagram Reels ёки пост ҳаволасини юборинг.\n\nℹ️ /help — ёрдам"
+    await message.answer(text)
