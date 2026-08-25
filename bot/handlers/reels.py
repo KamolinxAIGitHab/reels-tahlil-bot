@@ -262,6 +262,27 @@ async def handle_voice(message: Message):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
+    except UnclearAudioError:
+        if lang == "lang_rus":
+            await status_msg.edit_text(
+                "🔇 Качество аудио низкое.\n\n"
+                "Голос слишком тихий или сообщение слишком короткое (менее 1.5 секунды).\n\n"
+                "Пожалуйста, говорите чётче и отправьте снова."
+            )
+        elif lang == "lang_lotin":
+            await status_msg.edit_text(
+                "🔇 Audio sifati past.\n\n"
+                "• Ovoz juda past yoki\n"
+                "• Xabar juda qisqa (1.5 soniyadan kam)\n\n"
+                "Iltimos, aniqroq gapirib qayta yuboring."
+            )
+        else:
+            await status_msg.edit_text(
+                "🔇 Аудио сифати паст.\n\n"
+                "• Овоз жуда паст ёки\n"
+                "• Хабар жуда қисқа (1.5 сониядан кам)\n\n"
+                "Илтимос, аниқроқ гапириб қайта юборинг."
+            )
     except Exception as e:
         if lang == "lang_rus":
             await status_msg.edit_text("❌ Произошла ошибка. Попробуйте снова.")
