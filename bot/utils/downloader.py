@@ -68,39 +68,66 @@ async def download_reels_audio(url: str) -> str:
 
     return await loop.run_in_executor(None, _download)
 
-def _build_ydl_opts_image(tmp_dir: str) -> dict:
-    opts = {
-        "outtmpl": os.path.join(tmp_dir, "%(id)s_%(autonumber)s.%(ext)s"),
-        "quiet": True,
-        "no_warnings": True,
-    }
-    if _COOKIES_FILE:
-        opts["cookiefile"] = _COOKIES_FILE
-    elif INSTAGRAM_USER and INSTAGRAM_PASS:
-        opts["username"] = INSTAGRAM_USER
-        opts["password"] = INSTAGRAM_PASS
-    return opts
+async def download_instagram_image(url: str):
+    import instaloader
+    import re
 
-async def download_instagram_image(url: str) -> tuple[list[str], str]:
     output_dir = "downloads"
     os.makedirs(output_dir, exist_ok=True)
-
     tmp_dir = os.path.join(output_dir, str(uuid.uuid4()))
     os.makedirs(tmp_dir, exist_ok=True)
 
     loop = asyncio.get_event_loop()
 
     def _download():
-        with yt_dlp.YoutubeDL(_build_ydl_opts_image(tmp_dir)) as ydl:
-            info = ydl.extract_info(url, download=True)
-
-        caption = (info.get("description") or "") if info else ""
-
-        images = sorted(
-            os.path.join(tmp_dir, f)
-            for f in os.listdir(tmp_dir)
-            if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
+        L = instaloader.Instaloader(
+            download_pictures=True,
+            download_videos=False,
+            download_video_thumbnails=False,
+            download_geotags=False,
+            download_comments=False,
+            save_metadata=False,
+            quiet=True,
+            dirname_pattern=tmp_dir,
         )
+
+        cookie_jar = {}
+        if _COOKIES_FILE:
+            try:
+                import http.cookiejar
+                jar = http.cookiejar.MozillaCookieJar(_COOKIES_FILE)
+                jar.load()
+                for cookie in jar:
+                    if "instagram" in cookie.domain:
+                        cookie_jar[cookie.name] = cookie.value
+                if cookie_jar:
+                    L.context._session.cookies.update(cookie_jar)
+            except Exception:
+                pass
+
+        match = re.search(r'/p/([A-Za-z0-9_-]+)', url)
+        if not match:
+            raise ValueError("Instagram post URL notogri")
+        shortcode = match.group(1)
+
+        post = instaloader.Post.from_shortcode(L.context, shortcode)
+        caption = post.caption or ""
+        images = []
+
+        if post.typename == "GraphSidecar":
+            for node in post.get_sidecar_nodes():
+                if not node.is_video:
+                    img_path = os.path.join(tmp_dir, f"{node.shortcode}.jpg")
+                    L.download_pic(img_path, node.display_url, post.date_utc)
+                    images.append(img_path)
+        elif post.typename == "GraphImage":
+            img_path = os.path.join(tmp_dir, f"{shortcode}.jpg")
+            L.download_pic(img_path, post.url, post.date_utc)
+            images.append(img_path)
+
+        if not images:
+            raise ValueError("Rasmlar topilmadi")
+
         return images, caption
 
     return await loop.run_in_executor(None, _download)
