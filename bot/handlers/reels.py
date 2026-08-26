@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 from openai import RateLimitError, AuthenticationError, BadRequestError
 from bot.utils.downloader import (
     download_reels_audio, download_instagram_image, download_account_posts,
-    download_youtube_shorts, VideoTooLongError,
+    download_youtube_shorts, VideoTooLongError, AudioExtractionFailedError,
 )
 from bot.utils import stats
 from bot.utils.stt import transcribe_audio, UnclearAudioError
@@ -933,6 +933,19 @@ async def handle_youtube(message: Message):
         logging.warning(f"YouTube video juda uzun: user_id={message.from_user.id} url={url} duration={e.duration}s")
         stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "error", "download_error", f"video {e.duration}s uzun")
         await status_msg.edit_text(YOUTUBE_TOO_LONG_MESSAGES.get(lang, YOUTUBE_TOO_LONG_MESSAGES["lang_kirill"]))
+    except AudioExtractionFailedError as e:
+        logging.warning(f"YouTube audio ajratib bo'lmadi: user_id={message.from_user.id} url={url} error={e}")
+        stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "error", "download_error", "audio ajratilmadi")
+        audio_fail_messages = {
+            "lang_kirill": (
+                "⚠️ Бу видео учун аудио олиб бўлмади. "
+                "YouTube серверида вақтинчалик чеклов. "
+                "Бошқа видео синаб кўринг."
+            ),
+            "lang_lotin": "⚠️ Bu video uchun audio olib bo'lmadi. Boshqa video sinab ko'ring.",
+            "lang_rus": "⚠️ Не удалось получить аудио для этого видео. Попробуйте другое видео.",
+        }
+        await status_msg.edit_text(audio_fail_messages.get(lang, audio_fail_messages["lang_kirill"]))
     except asyncio.TimeoutError:
         logging.warning(f"YouTube tahlili timeout: user_id={message.from_user.id} url={url}")
         stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "error", "download_error", "timeout")

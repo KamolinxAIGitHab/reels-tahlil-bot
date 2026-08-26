@@ -169,19 +169,30 @@ class VideoTooLongError(Exception):
         super().__init__(f"Video juda uzun: {duration} soniya")
 
 
-def _build_youtube_ydl_opts(tmp_dir: str) -> dict:
+class AudioExtractionFailedError(Exception):
+    """YouTube'dan yuklab olingan video/audio yaroqsiz (chala yoki
+    buzilgan stream) bo'lib chiqqanda, barcha player_client
+    fallback'lari sinab ko'rilgandan keyin ham ko'tariladi."""
+
+
+# YouTube'ning "Sign in to confirm you're not a bot" tekshiruvini
+# chetlab o'tish uchun bir nechta player_client'lar ketma-ket sinaladi —
+# "android" ba'zi videolar uchun chala/uzilgan stream qaytarishi mumkin
+# (yt-dlp/YouTube'ning bilinadigan nomuvofiqligi), shunda navbatdagisiga
+# o'tiladi.
+_YOUTUBE_PLAYER_CLIENTS = ("android", "web_creator", "mweb")
+
+
+def _build_youtube_ydl_opts(tmp_dir: str, player_client: str) -> dict:
     # Instagram cookiefile/login ma'lumotlari YouTube uchun kerak emas
     # va tegishli emas — shuning uchun _build_ydl_opts qayta ishlatilmaydi.
-    # player_client=android — YouTube'ning "Sign in to confirm you're
-    # not a bot" bot-tekshiruvini chetlab o'tish uchun (yt-dlp'ning
-    # ma'lum workaround'i, cookie talab qilmaydi).
     return {
         "outtmpl": os.path.join(tmp_dir, "%(id)s.%(ext)s"),
         "format": "mp4/bestvideo+bestaudio/best",
         "quiet": True,
         "no_warnings": True,
         "merge_output_format": "mp4",
-        "extractor_args": {"youtube": {"player_client": ["android"]}},
+        "extractor_args": {"youtube": {"player_client": [player_client]}},
     }
 
 
@@ -191,7 +202,11 @@ async def download_youtube_shorts(url: str, max_duration: int = 60):
     xil pipeline'da ffmpeg bilan audio yo'lakchasini ajratib oladi va
     (audio_path, caption) qaytaradi. Video max_duration'dan uzun bo'lsa,
     yuklab olishdan oldin (faqat metadata so'ralib) VideoTooLongError
-    ko'taradi."""
+    ko'taradi. Ajratilgan audio yaroqsiz (chala/buzilgan) chiqsa,
+    Whisper'ga yuborilmasdan, boshqa player_client bilan qayta uriniladi;
+    barchasi muvaffaqiyatsiz bo'lsa AudioExtractionFailedError ko'taradi."""
+    from bot.utils.stt import _probe_audio
+
     output_dir = "downloads"
     os.makedirs(output_dir, exist_ok=True)
     tmp_dir = os.path.join(output_dir, str(uuid.uuid4()))
@@ -211,30 +226,44 @@ async def download_youtube_shorts(url: str, max_duration: int = 60):
         if duration > max_duration:
             raise VideoTooLongError(int(duration))
 
-        with yt_dlp.YoutubeDL(_build_youtube_ydl_opts(tmp_dir)) as ydl:
-            ydl.download([url])
-
-        video_path = None
-        for f in os.listdir(tmp_dir):
-            if f.endswith((".mp4", ".mov", ".avi", ".mkv", ".webm")):
-                video_path = os.path.join(tmp_dir, f)
-                break
-        if not video_path:
-            raise FileNotFoundError("Video topilmadi!")
-
-        audio_path = os.path.join(tmp_dir, "audio.mp3")
-        subprocess.run(
-            ["ffmpeg", "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k", audio_path],
-            capture_output=True,
-            timeout=60,
-        )
-        os.remove(video_path)
-
-        if not os.path.exists(audio_path):
-            raise FileNotFoundError("Audio ajratib olinmadi!")
-
         caption = info.get("description") or info.get("title") or ""
-        return audio_path, caption
+
+        for player_client in _YOUTUBE_PLAYER_CLIENTS:
+            try:
+                with yt_dlp.YoutubeDL(_build_youtube_ydl_opts(tmp_dir, player_client)) as ydl:
+                    ydl.download([url])
+            except Exception:
+                continue
+
+            video_path = None
+            for f in os.listdir(tmp_dir):
+                if f.endswith((".mp4", ".mov", ".avi", ".mkv", ".webm")):
+                    video_path = os.path.join(tmp_dir, f)
+                    break
+            if not video_path:
+                continue
+
+            audio_path = os.path.join(tmp_dir, "audio.mp3")
+            subprocess.run(
+                ["ffmpeg", "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k", audio_path],
+                capture_output=True,
+                timeout=60,
+            )
+            os.remove(video_path)
+
+            if not os.path.exists(audio_path):
+                continue
+
+            probed_duration, _ = _probe_audio(audio_path)
+            if probed_duration is None:
+                os.remove(audio_path)
+                continue
+
+            return audio_path, caption
+
+        raise AudioExtractionFailedError(
+            f"Barcha player_client fallback'lari ({', '.join(_YOUTUBE_PLAYER_CLIENTS)}) yaroqli audio bermadi"
+        )
 
     return await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=90)
 
