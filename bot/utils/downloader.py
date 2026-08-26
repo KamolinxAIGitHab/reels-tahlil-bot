@@ -60,11 +60,24 @@ def _load_cookies_into(L: "instaloader.Instaloader") -> None:
         cookie_dict = {c.name: c.value for c in jar if "instagram" in c.domain}
         if cookie_dict:
             L.context._session.cookies.update(cookie_dict)
-            L.context._session.headers.update({
+            headers = {
                 'X-IG-App-ID': '936619743392459',
                 'X-Requested-With': 'XMLHttpRequest',
                 'Referer': 'https://www.instagram.com/',
-            })
+            }
+            if 'csrftoken' in cookie_dict:
+                headers['X-CSRFToken'] = cookie_dict['csrftoken']
+            L.context._session.headers.update(headers)
+
+            # instaloader'ning is_logged_in xossasi faqat context.username'ga
+            # qaraydi (cookie'larga emas!) — shuning uchun Profile.get_posts()
+            # bizni "anonim" deb hisoblab, qattiq cheklangan endpoint'ni
+            # tanlaydi. Haqiqiy login holatini tekshirib, username'ni
+            # qo'lda o'rnatamiz — shu orqali get_posts() avtorizatsiyalangan
+            # (ancha kengroq ruxsatli) yo'lni tanlaydi.
+            username = L.context.test_login()
+            if username:
+                L.context.username = username
     except Exception:
         pass
 
