@@ -215,12 +215,25 @@ async def download_youtube_shorts(url: str, max_duration: int = 60):
     loop = asyncio.get_event_loop()
 
     def _download():
-        probe_opts = {
-            "quiet": True, "no_warnings": True, "skip_download": True,
-            "extractor_args": {"youtube": {"player_client": ["android"]}},
-        }
-        with yt_dlp.YoutubeDL(probe_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+        info = None
+        last_probe_error = None
+        for player_client in _YOUTUBE_PLAYER_CLIENTS:
+            try:
+                probe_opts = {
+                    "quiet": True, "no_warnings": True, "skip_download": True,
+                    "extractor_args": {"youtube": {"player_client": [player_client]}},
+                }
+                with yt_dlp.YoutubeDL(probe_opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                break
+            except Exception as e:
+                last_probe_error = e
+                continue
+
+        if info is None:
+            raise AudioExtractionFailedError(
+                f"Video ma'lumotini olib bo'lmadi (barcha client'lar rad etdi): {last_probe_error}"
+            )
 
         duration = info.get("duration") or 0
         if duration > max_duration:
