@@ -3,6 +3,7 @@ import os
 import uuid
 import asyncio
 import base64
+import subprocess
 import http.cookiejar
 import instaloader
 
@@ -98,9 +99,11 @@ def _new_instaloader(**extra_opts) -> "instaloader.Instaloader":
     return L
 
 async def download_reels_audio(url: str):
-    """Instagram Reels videosini yt-dlp orqali yuklaydi va (video_path, caption)
-    qaytaradi. Caption instaloader orqali alohida, best-effort tarzda olinadi —
-    topilmasa yoki timeout bo'lsa, bo'sh satr qaytariladi."""
+    """Instagram Reels videosini yt-dlp orqali yuklaydi, undan ffmpeg bilan
+    audio yo'lakchasini ajratib oladi (Whisper API'ning 25MB chegarasidan
+    oshib ketmaslik uchun) va (audio_path, caption) qaytaradi. Caption
+    instaloader orqali alohida, best-effort tarzda olinadi — topilmasa
+    yoki timeout bo'lsa, bo'sh satr qaytariladi."""
     import re
 
     output_dir = "downloads"
@@ -124,18 +127,38 @@ async def download_reels_audio(url: str):
     def _download():
         with yt_dlp.YoutubeDL(_build_ydl_opts(tmp_dir)) as ydl:
             ydl.download([url])
+
+        video_path = None
         for f in os.listdir(tmp_dir):
             if f.endswith((".mp4", ".mov", ".avi", ".mkv", ".webm")):
-                return os.path.join(tmp_dir, f)
-        raise FileNotFoundError("Video topilmadi!")
+                video_path = os.path.join(tmp_dir, f)
+                break
+        if not video_path:
+            raise FileNotFoundError("Video topilmadi!")
 
-    video_path = await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=90)
+        # Whisper API 25MB (26214400 bayt) chegarasiga ega — to'liq videoni
+        # (video+audio) emas, faqat siqilgan audio yo'lakchasini yuboramiz,
+        # bu hajmni ~10-20 barobar kamaytiradi va 413 xatosining oldini oladi.
+        audio_path = os.path.join(tmp_dir, "audio.mp3")
+        subprocess.run(
+            ["ffmpeg", "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k", audio_path],
+            capture_output=True,
+            timeout=60,
+        )
+        os.remove(video_path)
+
+        if not os.path.exists(audio_path):
+            raise FileNotFoundError("Audio ajratib olinmadi!")
+
+        return audio_path
+
+    audio_path = await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=90)
     try:
         caption = await asyncio.wait_for(loop.run_in_executor(None, _get_caption), timeout=20)
     except asyncio.TimeoutError:
         caption = ""
 
-    return video_path, caption
+    return audio_path, caption
 
 async def download_instagram_image(url: str):
     """Instagram post (/p/...) rasmlarini yuklaydi — bitta rasm yoki karusel
