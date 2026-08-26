@@ -13,3 +13,5 @@ bot/utils/__pycache__/
 
 downloads/
 *.mp4
+
+stats.db

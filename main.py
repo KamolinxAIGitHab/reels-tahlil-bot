@@ -2,6 +2,7 @@ import asyncio
 import logging
 import sys
 from aiogram import Bot, Dispatcher
+from aiogram.types import BotCommand
 from bot.config import settings
 from bot.handlers import reels
 
@@ -13,6 +14,12 @@ async def main():
     dp = Dispatcher()
 
     dp.include_router(reels.router)
+
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Ботни бошлаш / Начать"),
+        BotCommand(command="help", description="Ёрдам / Помощь"),
+        BotCommand(command="stats", description="Статистика"),
+    ])
 
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     await dp.start_polling(bot)

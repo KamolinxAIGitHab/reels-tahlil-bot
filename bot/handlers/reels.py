@@ -14,6 +14,7 @@ from bot.utils.downloader import (
     download_reels_audio, download_instagram_image, download_account_posts,
     download_youtube_shorts, VideoTooLongError,
 )
+from bot.utils import stats
 from bot.utils.stt import transcribe_audio, UnclearAudioError
 from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_caption_only, analyze_account
 
@@ -95,18 +96,26 @@ def is_moderation_refusal(text: str | None) -> bool:
     return any(p in lowered for p in _REFUSAL_PATTERNS)
 
 
-async def handle_openai_error(status_msg, lang: str, e: Exception, context: str) -> bool:
+async def handle_openai_error(
+    status_msg, lang: str, e: Exception, context: str,
+    user_id: int | None = None, source_type: str | None = None,
+) -> bool:
     """OpenAI'ning kredit tugashi (RateLimitError, shu jumladan
     insufficient_quota/429), autentifikatsiya (AuthenticationError) va
     moderatsiya (BadRequestError/content_filter) xatolarini 3 tilda
-    foydalanuvchiga ko'rsatadi. Xato OpenAI'ga tegishli bo'lmasa False
-    qaytaradi — chaqiruvchi umumiy xato ishlovini davom ettiradi."""
+    foydalanuvchiga ko'rsatadi va statistika bazasiga yozadi. Xato
+    OpenAI'ga tegishli bo'lmasa False qaytaradi — chaqiruvchi umumiy
+    xato ishlovini davom ettiradi."""
     if isinstance(e, AuthenticationError):
         logging.error(f"OpenAI autentifikatsiya xatosi ({context}): {e}")
+        if user_id is not None:
+            stats.log_analysis(user_id, source_type, lang, "error", "openai_auth", str(e))
         await status_msg.edit_text(OPENAI_AUTH_MESSAGES.get(lang, OPENAI_AUTH_MESSAGES["lang_kirill"]))
         return True
     if isinstance(e, RateLimitError):
         logging.error(f"OpenAI kredit/rate-limit xatosi ({context}): {e}")
+        if user_id is not None:
+            stats.log_analysis(user_id, source_type, lang, "error", "openai_credit", str(e))
         await status_msg.edit_text(OPENAI_CREDIT_MESSAGES.get(lang, OPENAI_CREDIT_MESSAGES["lang_kirill"]))
         return True
     if isinstance(e, BadRequestError):
@@ -114,6 +123,8 @@ async def handle_openai_error(status_msg, lang: str, e: Exception, context: str)
         code = str(getattr(e, "code", "") or "").lower()
         if "content_filter" in message or "content_filter" in code or "moderation" in message:
             logging.error(f"OpenAI moderatsiya xatosi ({context}): {e}")
+            if user_id is not None:
+                stats.log_analysis(user_id, source_type, lang, "error", "moderation", str(e))
             await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
             return True
     return False
@@ -283,6 +294,88 @@ async def cmd_help(message: Message):
         )
     await message.answer(text, parse_mode="HTML")
 
+@router.message(Command("stats"))
+async def cmd_stats(message: Message):
+    lang = user_language.get(message.from_user.id, "lang_kirill")
+    s = stats.get_stats()
+    et = s["today_error_types"]
+    src = s["by_source"]
+    lng = s["by_lang"]
+
+    if lang == "lang_rus":
+        text = (
+            f"📊 Статистика:\n"
+            f"📅 Сегодня: {s['today_total']} запросов\n"
+            f"  ✅ Успешно: {s['today_success']}\n"
+            f"  ❌ Ошибки: {s['today_error']}\n"
+            f"    - Ограничение Instagram: {et['instagram_limit']}\n"
+            f"    - Кредит OpenAI: {et['openai_credit']}\n"
+            f"    - Модерация: {et['moderation']}\n"
+            f"    - Другое: {et['boshqa']}\n\n"
+            f"📅 На этой неделе: {s['week_total']}\n"
+            f"📅 В этом месяце: {s['month_total']}\n"
+            f"📅 Всего (с начала работы бота): {s['all_total']}\n\n"
+            f"📌 По типу (всего):\n"
+            f"  🎬 Instagram Reels: {src['instagram_reels']}\n"
+            f"  📸 Instagram пост: {src['instagram_post']}\n"
+            f"  👤 Instagram аккаунт: {src['instagram_account']}\n"
+            f"  🎥 YouTube Shorts: {src['youtube_shorts']}\n"
+            f"  🎤 Голосовое сообщение: {src['voice']}\n\n"
+            f"📌 По языку (всего):\n"
+            f"  🇺🇿 Узбекский кириллица: {lng['lang_kirill']}\n"
+            f"  🔤 Узбекский латиница: {lng['lang_lotin']}\n"
+            f"  🇷🇺 Русский: {lng['lang_rus']}"
+        )
+    elif lang == "lang_lotin":
+        text = (
+            f"📊 Statistika:\n"
+            f"📅 Bugun: {s['today_total']} ta so'rov\n"
+            f"  ✅ Muvaffaqiyatli: {s['today_success']}\n"
+            f"  ❌ Xato: {s['today_error']}\n"
+            f"    - Instagram cheklov: {et['instagram_limit']}\n"
+            f"    - OpenAI kredit: {et['openai_credit']}\n"
+            f"    - Moderatsiya: {et['moderation']}\n"
+            f"    - Boshqa: {et['boshqa']}\n\n"
+            f"📅 Bu hafta: {s['week_total']} ta\n"
+            f"📅 Bu oy: {s['month_total']} ta\n"
+            f"📅 Jami (botdan beri): {s['all_total']} ta\n\n"
+            f"📌 Tur bo'yicha (jami):\n"
+            f"  🎬 Instagram Reels: {src['instagram_reels']}\n"
+            f"  📸 Instagram post: {src['instagram_post']}\n"
+            f"  👤 Instagram akkaunt: {src['instagram_account']}\n"
+            f"  🎥 YouTube Shorts: {src['youtube_shorts']}\n"
+            f"  🎤 Ovozli xabar: {src['voice']}\n\n"
+            f"📌 Til bo'yicha (jami):\n"
+            f"  🇺🇿 O'zbek kirill: {lng['lang_kirill']}\n"
+            f"  🔤 O'zbek lotin: {lng['lang_lotin']}\n"
+            f"  🇷🇺 Rus: {lng['lang_rus']}"
+        )
+    else:
+        text = (
+            f"📊 Статистика:\n"
+            f"📅 Бугун: {s['today_total']} та сўров\n"
+            f"  ✅ Муваффақиятли: {s['today_success']}\n"
+            f"  ❌ Хато: {s['today_error']}\n"
+            f"    - Instagram чеклов: {et['instagram_limit']}\n"
+            f"    - OpenAI кредит: {et['openai_credit']}\n"
+            f"    - Модерация: {et['moderation']}\n"
+            f"    - Бошқа: {et['boshqa']}\n\n"
+            f"📅 Бу ҳафта: {s['week_total']} та\n"
+            f"📅 Бу ой: {s['month_total']} та\n"
+            f"📅 Жами (ботдан бери): {s['all_total']} та\n\n"
+            f"📌 Тур бўйича (жами):\n"
+            f"  🎬 Instagram Reels: {src['instagram_reels']}\n"
+            f"  📸 Instagram пост: {src['instagram_post']}\n"
+            f"  👤 Instagram аккаунт: {src['instagram_account']}\n"
+            f"  🎥 YouTube Shorts: {src['youtube_shorts']}\n"
+            f"  🎤 Овозли хабар: {src['voice']}\n\n"
+            f"📌 Тил бўйича (жами):\n"
+            f"  🇺🇿 Ўзбек кирилл: {lng['lang_kirill']}\n"
+            f"  🔤 Ўзбек лотин: {lng['lang_lotin']}\n"
+            f"  🇷🇺 Рус: {lng['lang_rus']}"
+        )
+    await message.answer(text)
+
 @router.callback_query(F.data.in_({"lang_kirill", "lang_lotin", "lang_rus"}))
 async def set_language(callback: CallbackQuery):
     lang = callback.data
@@ -320,6 +413,7 @@ async def handle_account(message: Message):
         posts, biography = await download_account_posts(username)
 
         if not posts:
+            stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "download_error", "posts bo'sh")
             if lang == "lang_rus":
                 await status_msg.edit_text("❌ Аккаунт не найден или нет постов.")
             elif lang == "lang_lotin":
@@ -339,6 +433,7 @@ async def handle_account(message: Message):
 
         if is_moderation_refusal(result):
             logging.warning(f"Moderatsiya rad etishi (handle_account): user_id={message.from_user.id} username={username}")
+            stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "moderation", "refusal-heuristic")
             await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
             return
 
@@ -350,8 +445,11 @@ async def handle_account(message: Message):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
+        stats.log_analysis(message.from_user.id, "instagram_account", lang, "success")
+
     except asyncio.TimeoutError:
         logging.warning(f"Akkount tahlili timeout: user_id={message.from_user.id} username={username}")
+        stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "download_error", "timeout")
         if lang == "lang_rus":
             await status_msg.edit_text("⏳ Instagram слишком долго не отвечает. Попробуйте позже.")
         elif lang == "lang_lotin":
@@ -359,11 +457,12 @@ async def handle_account(message: Message):
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
     except Exception as e:
-        if await handle_openai_error(status_msg, lang, e, "handle_account"):
+        if await handle_openai_error(status_msg, lang, e, "handle_account", message.from_user.id, "instagram_account"):
             return
         logging.error(f"Akkount tahlili xatosi: user_id={message.from_user.id} username={username} error={e}")
         err = str(e).lower()
         if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
+            stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "instagram_limit", str(e))
             if lang == "lang_rus":
                 await status_msg.edit_text("⏳ Instagram временно ограничил запросы. Повторите через 10-15 минут.")
             elif lang == "lang_lotin":
@@ -371,6 +470,7 @@ async def handle_account(message: Message):
             else:
                 await status_msg.edit_text("⏳ Instagram вақтинчалик чеклов қўйди. 10-15 дақиқадан сўнг қайта уриниб кўринг.")
         else:
+            stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "other", str(e))
             if lang == "lang_rus":
                 await status_msg.edit_text("❌ Произошла ошибка. Аккаунт закрытый или не существует.")
             elif lang == "lang_lotin":
@@ -407,6 +507,7 @@ async def handle_post(message: Message):
         elif caption:
             result = await analyze_caption_only(caption, lang)
         else:
+            stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "other", "mazmun topilmadi")
             if lang == "lang_rus":
                 await status_msg.edit_text("❌ В посте не найдено содержимого для анализа.")
             elif lang == "lang_lotin":
@@ -417,6 +518,7 @@ async def handle_post(message: Message):
 
         if is_moderation_refusal(result):
             logging.warning(f"Moderatsiya rad etishi (handle_post): user_id={message.from_user.id} url={url}")
+            stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "moderation", "refusal-heuristic")
             await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
             return
 
@@ -425,7 +527,10 @@ async def handle_post(message: Message):
             await message.answer(result[4000:])
         else:
             await status_msg.edit_text(result)
+
+        stats.log_analysis(message.from_user.id, "instagram_post", lang, "success")
     except asyncio.TimeoutError:
+        stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "download_error", "timeout")
         if lang == "lang_rus":
             await status_msg.edit_text("⏳ Instagram слишком долго не отвечает. Попробуйте позже.")
         elif lang == "lang_lotin":
@@ -433,11 +538,12 @@ async def handle_post(message: Message):
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
     except Exception as e:
-        if await handle_openai_error(status_msg, lang, e, "handle_post"):
+        if await handle_openai_error(status_msg, lang, e, "handle_post", message.from_user.id, "instagram_post"):
             return
         logging.error(f"Post tahlili xatosi: user_id={message.from_user.id} url={url} error={e}")
         err = str(e).lower()
         if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
+            stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "instagram_limit", str(e))
             if lang == "lang_rus":
                 await status_msg.edit_text("⏳ Instagram временно ограничил запросы. Повторите через 10-15 минут.")
             elif lang == "lang_lotin":
@@ -445,6 +551,7 @@ async def handle_post(message: Message):
             else:
                 await status_msg.edit_text("⏳ Instagram вақтинчалик чеклов қўйди. 10-15 дақиқадан сўнг қайта уриниб кўринг.")
         else:
+            stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "other", str(e))
             if lang == "lang_rus":
                 await status_msg.edit_text("❌ Произошла ошибка. Попробуйте другую ссылку.")
             elif lang == "lang_lotin":
@@ -506,6 +613,7 @@ async def handle_voice(message: Message):
         text = await loop.run_in_executor(None, transcribe_audio, mp3_path, whisper_lang)
 
         if not text or not text.strip():
+            stats.log_analysis(message.from_user.id, "voice", lang, "error", "other", "nutq aniqlanmadi")
             if lang == "lang_rus":
                 await status_msg.edit_text("❌ Не удалось распознать речь. Попробуйте снова.")
             elif lang == "lang_lotin":
@@ -527,6 +635,7 @@ async def handle_voice(message: Message):
 
         if is_moderation_refusal(analysis):
             logging.warning(f"Moderatsiya rad etishi (handle_voice): user_id={message.from_user.id}")
+            stats.log_analysis(message.from_user.id, "voice", lang, "error", "moderation", "refusal-heuristic")
             await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
             return
 
@@ -538,7 +647,10 @@ async def handle_voice(message: Message):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
+        stats.log_analysis(message.from_user.id, "voice", lang, "success")
+
     except UnclearAudioError:
+        stats.log_analysis(message.from_user.id, "voice", lang, "error", "other", "audio sifati past")
         if lang == "lang_rus":
             await status_msg.edit_text(
                 "🔇 Качество аудио низкое.\n\n"
@@ -560,6 +672,7 @@ async def handle_voice(message: Message):
                 "Илтимос, аниқроқ гапириб қайта юборинг."
             )
     except subprocess.TimeoutExpired:
+        stats.log_analysis(message.from_user.id, "voice", lang, "error", "download_error", "ffmpeg timeout")
         if lang == "lang_rus":
             await status_msg.edit_text("⏳ Обработка аудио заняла слишком много времени. Попробуйте снова.")
         elif lang == "lang_lotin":
@@ -567,11 +680,12 @@ async def handle_voice(message: Message):
         else:
             await status_msg.edit_text("⏳ Аудио қайта ишлаш жуда узоқ давом этди. Қайта уриниб кўринг.")
     except Exception as e:
-        if await handle_openai_error(status_msg, lang, e, "handle_voice"):
+        if await handle_openai_error(status_msg, lang, e, "handle_voice", message.from_user.id, "voice"):
             return
         logging.error(f"Ovozli xabar tahlili xatosi: user_id={message.from_user.id} error={e}")
         err = str(e).lower()
         if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
+            stats.log_analysis(message.from_user.id, "voice", lang, "error", "openai_credit", str(e))
             if lang == "lang_rus":
                 await status_msg.edit_text("⏳ Слишком много запросов. Повторите через 10-15 минут.")
             elif lang == "lang_lotin":
@@ -579,6 +693,7 @@ async def handle_voice(message: Message):
             else:
                 await status_msg.edit_text("⏳ Сўровлар жуда кўп. 10-15 дақиқадан сўнг қайта уриниб кўринг.")
         else:
+            stats.log_analysis(message.from_user.id, "voice", lang, "error", "other", str(e))
             if lang == "lang_rus":
                 await status_msg.edit_text("❌ Произошла ошибка. Попробуйте снова.")
             elif lang == "lang_lotin":
@@ -627,6 +742,7 @@ async def handle_reel(message: Message):
             text = await loop.run_in_executor(None, transcribe_audio, file_path, whisper_lang)
         except UnclearAudioError as e:
             logging.warning(f"Aniq bo'lmagan audio (user_id={message.from_user.id}, url={url}): {e}")
+            stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "other", "audio sifati past")
             unclear_messages = {
                 "lang_kirill": (
                     "⚠️ Видеода аниқ товуш ёки нутқ топилмади "
@@ -667,6 +783,7 @@ async def handle_reel(message: Message):
 
         if is_moderation_refusal(analysis):
             logging.warning(f"Moderatsiya rad etishi (handle_reel): user_id={message.from_user.id} url={url}")
+            stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "moderation", "refusal-heuristic")
             await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
             return
 
@@ -681,7 +798,10 @@ async def handle_reel(message: Message):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
+        stats.log_analysis(message.from_user.id, "instagram_reels", lang, "success")
+
     except asyncio.TimeoutError:
+        stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "download_error", "timeout")
         if lang == "lang_rus":
             await status_msg.edit_text("⏳ Instagram слишком долго не отвечает. Попробуйте позже.")
         elif lang == "lang_lotin":
@@ -689,11 +809,12 @@ async def handle_reel(message: Message):
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
     except Exception as e:
-        if await handle_openai_error(status_msg, lang, e, "handle_reel"):
+        if await handle_openai_error(status_msg, lang, e, "handle_reel", message.from_user.id, "instagram_reels"):
             return
         logging.error(f"Error handling reel: {e}")
         err = str(e).lower()
         if any(k in err for k in ("rate", "429", "too many", "limit", "ratelimit")):
+            stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "instagram_limit", str(e))
             rate_messages = {
                 "lang_kirill": (
                     "⏳ Instagram вақтинчалик чеклов қўйди.\n\n"
@@ -713,6 +834,7 @@ async def handle_reel(message: Message):
             }
             await status_msg.edit_text(rate_messages.get(lang, rate_messages["lang_kirill"]))
         else:
+            stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "other", str(e))
             error_messages = {
                 "lang_kirill": "❌ Хато юз берди. Илтимос, бошқа Reels ҳаволасини юборинг.",
                 "lang_lotin": "❌ Xato yuz berdi. Iltimos, boshqa Reels havolasini yuboring.",
@@ -749,6 +871,7 @@ async def handle_youtube(message: Message):
             text = await loop.run_in_executor(None, transcribe_audio, file_path, whisper_lang)
         except UnclearAudioError as e:
             logging.warning(f"Aniq bo'lmagan audio (user_id={message.from_user.id}, url={url}): {e}")
+            stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "error", "other", "audio sifati past")
             unclear_messages = {
                 "lang_kirill": (
                     "⚠️ Видеода аниқ товуш ёки нутқ топилмади "
@@ -789,6 +912,7 @@ async def handle_youtube(message: Message):
 
         if is_moderation_refusal(analysis):
             logging.warning(f"Moderatsiya rad etishi (handle_youtube): user_id={message.from_user.id} url={url}")
+            stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "error", "moderation", "refusal-heuristic")
             await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
             return
 
@@ -803,11 +927,15 @@ async def handle_youtube(message: Message):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
+        stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "success")
+
     except VideoTooLongError as e:
         logging.warning(f"YouTube video juda uzun: user_id={message.from_user.id} url={url} duration={e.duration}s")
+        stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "error", "download_error", f"video {e.duration}s uzun")
         await status_msg.edit_text(YOUTUBE_TOO_LONG_MESSAGES.get(lang, YOUTUBE_TOO_LONG_MESSAGES["lang_kirill"]))
     except asyncio.TimeoutError:
         logging.warning(f"YouTube tahlili timeout: user_id={message.from_user.id} url={url}")
+        stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "error", "download_error", "timeout")
         if lang == "lang_rus":
             await status_msg.edit_text("⏳ YouTube слишком долго не отвечает. Попробуйте позже.")
         elif lang == "lang_lotin":
@@ -815,9 +943,10 @@ async def handle_youtube(message: Message):
         else:
             await status_msg.edit_text("⏳ YouTube жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
     except Exception as e:
-        if await handle_openai_error(status_msg, lang, e, "handle_youtube"):
+        if await handle_openai_error(status_msg, lang, e, "handle_youtube", message.from_user.id, "youtube_shorts"):
             return
         logging.error(f"YouTube tahlili xatosi: user_id={message.from_user.id} url={url} error={e}")
+        stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "error", "other", str(e))
         if lang == "lang_rus":
             await status_msg.edit_text("❌ Произошла ошибка. Попробуйте другую ссылку.")
         elif lang == "lang_lotin":
