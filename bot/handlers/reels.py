@@ -160,22 +160,30 @@ def extract_account_url(text: str) -> str | None:
     return None
 
 YOUTUBE_URL_PATTERN = re.compile(
-    r"(?<![A-Za-z0-9.\-])(?:https?://)?(?:www\.|m\.)?(?:youtube\.com/(?:shorts/[A-Za-z0-9_\-]+|watch\?v=[A-Za-z0-9_\-]+(?:&[A-Za-z0-9=&%_\-]*)?)|youtu\.be/[A-Za-z0-9_\-]+)(?:\?[A-Za-z0-9=&%_\-]*)?",
+    r"(?<![A-Za-z0-9.\-])(?:https?://)?(?:www\.|m\.)?"
+    r"(?:youtube\.com/shorts/[A-Za-z0-9_\-]+"
+    r"|youtube\.com/watch\?v=[A-Za-z0-9_\-]+"
+    r"|youtu\.be/[A-Za-z0-9_\-]+)"
+    r"(?:[?&][^\s<>\"']*)?",
     re.IGNORECASE,
 )
 YOUTUBE_ALLOWED_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}
+_URL_TRAILING_PUNCT = ".,;:!?)]}'\""
 
 
 def extract_youtube_url(text: str | None) -> str | None:
     """Xabardan YouTube (Shorts, youtu.be yoki oddiy watch) URL'ini
-    ajratib oladi va host'ini qat'iy tekshiradi. Uzun/qisqa ekanligi
-    bu yerda emas, yuklab olishdan oldin davomiylik bo'yicha
+    ajratib oladi va host'ini qat'iy tekshiradi. Query-qism (masalan
+    ?si=... ulashish tokeni) istalgan belgidan iborat bo'lishi mumkin —
+    faqat probel/qavs/qoshtirnoqda to'xtaydi. Gap oxiridagi tinish
+    belgilari (nuqta, vergul va hokazo) kesib tashlanadi. Uzun/qisqa
+    ekanligi bu yerda emas, yuklab olishdan oldin davomiylik bo'yicha
     tekshiriladi (download_youtube_shorts)."""
     match = YOUTUBE_URL_PATTERN.search(text or "")
     if not match:
         return None
 
-    candidate = match.group(0)
+    candidate = match.group(0).rstrip(_URL_TRAILING_PUNCT)
     if not candidate.lower().startswith(("http://", "https://")):
         candidate = "https://" + candidate
 
@@ -824,9 +832,9 @@ async def handle_youtube(message: Message):
 async def echo_all(message: Message):
     lang = user_language.get(message.from_user.id, "lang_kirill")
     if lang == "lang_rus":
-        text = "📎 Отправьте ссылку на Instagram Reels или пост.\n\nℹ️ /help — справка"
+        text = "📎 Отправьте ссылку на Instagram Reels/пост или YouTube Shorts.\n\nℹ️ /help — справка"
     elif lang == "lang_lotin":
-        text = "📎 Instagram Reels yoki post havolasini yuboring.\n\nℹ️ /help — yordam"
+        text = "📎 Instagram Reels/post yoki YouTube Shorts havolasini yuboring.\n\nℹ️ /help — yordam"
     else:
-        text = "📎 Instagram Reels ёки пост ҳаволасини юборинг.\n\nℹ️ /help — ёрдам"
+        text = "📎 Instagram Reels/пост ёки YouTube Shorts ҳаволасини юборинг.\n\nℹ️ /help — ёрдам"
     await message.answer(text)
