@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import logging
 from urllib.parse import urlparse
+from openai import RateLimitError, AuthenticationError
 from bot.utils.downloader import download_reels_audio, download_instagram_image, download_account_posts
 from bot.utils.stt import transcribe_audio, UnclearAudioError
 from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_caption_only, analyze_account
@@ -16,6 +17,47 @@ from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_c
 router = Router()
 
 user_language: dict[int, str] = {}
+
+OPENAI_CREDIT_MESSAGES = {
+    "lang_kirill": (
+        "⚠️ Хизмат вақтинчалик тўхтатилди.\n"
+        "OpenAI кредити тугади. Тез орада тикланади.\n"
+        "Илтимос, 10-15 дақиқадан сўнг уриниб кўринг."
+    ),
+    "lang_lotin": (
+        "⚠️ Xizmat vaqtincha to'xtatildi.\n"
+        "OpenAI krediti tugadi. Tez orada tiklanadi.\n"
+        "Iltimos, 10-15 daqiqadan so'ng urinib ko'ring."
+    ),
+    "lang_rus": (
+        "⚠️ Сервис временно недоступен.\n"
+        "Кредит OpenAI исчерпан. Скоро будет восстановлен.\n"
+        "Пожалуйста, попробуйте через 10-15 минут."
+    ),
+}
+
+OPENAI_AUTH_MESSAGES = {
+    "lang_kirill": "❌ API калит муаммоси. Илтимос, администратор билан боғланинг.",
+    "lang_lotin": "❌ API kalit muammosi. Iltimos, administrator bilan bog'laning.",
+    "lang_rus": "❌ Проблема с API ключом. Пожалуйста, свяжитесь с администратором.",
+}
+
+
+async def handle_openai_error(status_msg, lang: str, e: Exception, context: str) -> bool:
+    """OpenAI'ning kredit tugashi (RateLimitError, shu jumladan
+    insufficient_quota/429) va autentifikatsiya (AuthenticationError)
+    xatolarini 3 tilda foydalanuvchiga ko'rsatadi. Xato OpenAI'ga
+    tegishli bo'lmasa False qaytaradi — chaqiruvchi umumiy xato
+    ishlovini davom ettiradi."""
+    if isinstance(e, AuthenticationError):
+        logging.error(f"OpenAI autentifikatsiya xatosi ({context}): {e}")
+        await status_msg.edit_text(OPENAI_AUTH_MESSAGES.get(lang, OPENAI_AUTH_MESSAGES["lang_kirill"]))
+        return True
+    if isinstance(e, RateLimitError):
+        logging.error(f"OpenAI kredit/rate-limit xatosi ({context}): {e}")
+        await status_msg.edit_text(OPENAI_CREDIT_MESSAGES.get(lang, OPENAI_CREDIT_MESSAGES["lang_kirill"]))
+        return True
+    return False
 
 REEL_URL_PATTERN = re.compile(
     r"(?:https?://)?(?:www\.)?instagram\.com/reels?/[A-Za-z0-9_\-]+/?(?:\?[A-Za-z0-9=&%_\-]*)?",
@@ -213,6 +255,8 @@ async def handle_account(message: Message):
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
     except Exception as e:
+        if await handle_openai_error(status_msg, lang, e, "handle_account"):
+            return
         logging.error(f"Akkount tahlili xatosi: user_id={message.from_user.id} username={username} error={e}")
         err = str(e).lower()
         if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
@@ -279,6 +323,9 @@ async def handle_post(message: Message):
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
     except Exception as e:
+        if await handle_openai_error(status_msg, lang, e, "handle_post"):
+            return
+        logging.error(f"Post tahlili xatosi: user_id={message.from_user.id} url={url} error={e}")
         err = str(e).lower()
         if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
             if lang == "lang_rus":
@@ -405,6 +452,9 @@ async def handle_voice(message: Message):
         else:
             await status_msg.edit_text("⏳ Аудио қайта ишлаш жуда узоқ давом этди. Қайта уриниб кўринг.")
     except Exception as e:
+        if await handle_openai_error(status_msg, lang, e, "handle_voice"):
+            return
+        logging.error(f"Ovozli xabar tahlili xatosi: user_id={message.from_user.id} error={e}")
         err = str(e).lower()
         if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
             if lang == "lang_rus":
@@ -519,6 +569,8 @@ async def handle_reel(message: Message):
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
     except Exception as e:
+        if await handle_openai_error(status_msg, lang, e, "handle_reel"):
+            return
         logging.error(f"Error handling reel: {e}")
         err = str(e).lower()
         if any(k in err for k in ("rate", "429", "too many", "limit", "ratelimit")):
