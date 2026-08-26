@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import logging
 from urllib.parse import urlparse
-from openai import RateLimitError, AuthenticationError
+from openai import RateLimitError, AuthenticationError, BadRequestError
 from bot.utils.downloader import download_reels_audio, download_instagram_image, download_account_posts
 from bot.utils.stt import transcribe_audio, UnclearAudioError
 from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_caption_only, analyze_account
@@ -42,13 +42,47 @@ OPENAI_AUTH_MESSAGES = {
     "lang_rus": "❌ Проблема с API ключом. Пожалуйста, свяжитесь с администратором.",
 }
 
+MODERATION_MESSAGES = {
+    "lang_kirill": (
+        "⚠️ Бу контент таҳлил қилинмади. Instagram Reels мазмуни "
+        "бизнинг хизмат шартларимизга мос келмади."
+    ),
+    "lang_lotin": (
+        "⚠️ Bu kontent tahlil qilinmadi. Mazmun xizmat "
+        "shartlarimizga mos kelmadi."
+    ),
+    "lang_rus": (
+        "⚠️ Контент не был проанализирован. Содержание не "
+        "соответствует условиям сервиса."
+    ),
+}
+
+_REFUSAL_PATTERNS = (
+    "i can't assist", "i cannot assist", "i can't help", "i cannot help",
+    "i'm sorry, but i can't", "i'm sorry, i can't", "i am unable to assist",
+    "i am unable to help", "i won't be able to help", "i'm not able to help",
+    "against our content policy", "against openai's usage policies",
+    "violates our usage policies", "i can't provide", "i cannot provide",
+)
+
+
+def is_moderation_refusal(text: str | None) -> bool:
+    """GPT-4o javobi moderatsiya sababli rad etish (refusal) matni
+    ekanligini aniqlaydi — model so'rovni bajarishdan bosh tortganda
+    odatda ingliz tilida qisqa 'can't assist' uslubidagi javob beradi,
+    tizim promptidagi til talabidan qat'i nazar."""
+    if not text:
+        return False
+    lowered = text.lower()
+    return any(p in lowered for p in _REFUSAL_PATTERNS)
+
 
 async def handle_openai_error(status_msg, lang: str, e: Exception, context: str) -> bool:
     """OpenAI'ning kredit tugashi (RateLimitError, shu jumladan
-    insufficient_quota/429) va autentifikatsiya (AuthenticationError)
-    xatolarini 3 tilda foydalanuvchiga ko'rsatadi. Xato OpenAI'ga
-    tegishli bo'lmasa False qaytaradi — chaqiruvchi umumiy xato
-    ishlovini davom ettiradi."""
+    insufficient_quota/429), autentifikatsiya (AuthenticationError) va
+    moderatsiya (BadRequestError/content_filter) xatolarini 3 tilda
+    foydalanuvchiga ko'rsatadi. Xato OpenAI'ga tegishli bo'lmasa False
+    qaytaradi — chaqiruvchi umumiy xato ishlovini davom ettiradi."""
     if isinstance(e, AuthenticationError):
         logging.error(f"OpenAI autentifikatsiya xatosi ({context}): {e}")
         await status_msg.edit_text(OPENAI_AUTH_MESSAGES.get(lang, OPENAI_AUTH_MESSAGES["lang_kirill"]))
@@ -57,6 +91,13 @@ async def handle_openai_error(status_msg, lang: str, e: Exception, context: str)
         logging.error(f"OpenAI kredit/rate-limit xatosi ({context}): {e}")
         await status_msg.edit_text(OPENAI_CREDIT_MESSAGES.get(lang, OPENAI_CREDIT_MESSAGES["lang_kirill"]))
         return True
+    if isinstance(e, BadRequestError):
+        message = str(e).lower()
+        code = str(getattr(e, "code", "") or "").lower()
+        if "content_filter" in message or "content_filter" in code or "moderation" in message:
+            logging.error(f"OpenAI moderatsiya xatosi ({context}): {e}")
+            await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
+            return True
     return False
 
 REEL_URL_PATTERN = re.compile(
@@ -238,6 +279,11 @@ async def handle_account(message: Message):
 
         result = await analyze_account(posts, biography, username, lang)
 
+        if is_moderation_refusal(result):
+            logging.warning(f"Moderatsiya rad etishi (handle_account): user_id={message.from_user.id} username={username}")
+            await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
+            return
+
         result_text = f"👤 <b>@{username} аккаунт таҳлили:</b>\n\n{html.escape(result)}"
 
         if len(result_text) > 4000:
@@ -310,6 +356,12 @@ async def handle_post(message: Message):
             else:
                 await status_msg.edit_text("❌ Постда таҳлил қилишга мазмун топилмади.")
             return
+
+        if is_moderation_refusal(result):
+            logging.warning(f"Moderatsiya rad etishi (handle_post): user_id={message.from_user.id} url={url}")
+            await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
+            return
+
         if len(result) > 4000:
             await status_msg.edit_text(result[:4000])
             await message.answer(result[4000:])
@@ -414,6 +466,11 @@ async def handle_voice(message: Message):
 
         from bot.utils.analyzer import analyze_content
         analysis = await loop.run_in_executor(None, analyze_content, text, lang)
+
+        if is_moderation_refusal(analysis):
+            logging.warning(f"Moderatsiya rad etishi (handle_voice): user_id={message.from_user.id}")
+            await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
+            return
 
         result_text = f"🔍 <b>Таҳлил натижаси:</b>\n\n{html.escape(analysis)}"
 
@@ -549,6 +606,11 @@ async def handle_reel(message: Message):
             await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
 
         analysis = await loop.run_in_executor(None, analyze_content, text, lang)
+
+        if is_moderation_refusal(analysis):
+            logging.warning(f"Moderatsiya rad etishi (handle_reel): user_id={message.from_user.id} url={url}")
+            await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
+            return
 
         result_text = (
             f"🔍 <b>Таҳлил натижаси:</b>\n\n"
