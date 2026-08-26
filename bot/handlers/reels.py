@@ -10,7 +10,10 @@ import subprocess
 import logging
 from urllib.parse import urlparse
 from openai import RateLimitError, AuthenticationError, BadRequestError
-from bot.utils.downloader import download_reels_audio, download_instagram_image, download_account_posts
+from bot.utils.downloader import (
+    download_reels_audio, download_instagram_image, download_account_posts,
+    download_youtube_shorts, VideoTooLongError,
+)
 from bot.utils.stt import transcribe_audio, UnclearAudioError
 from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_caption_only, analyze_account
 
@@ -55,6 +58,21 @@ MODERATION_MESSAGES = {
         "⚠️ Контент не был проанализирован. Содержание не "
         "соответствует условиям сервиса."
     ),
+}
+
+YOUTUBE_STATUS_MESSAGES = {
+    "lang_kirill": "🎬 YouTube Shorts таҳлил қилиняпти...",
+    "lang_lotin": "🎬 YouTube Shorts tahlil qilinmoqda...",
+    "lang_rus": "🎬 YouTube Shorts анализируется...",
+}
+
+YOUTUBE_TOO_LONG_MESSAGES = {
+    "lang_kirill": (
+        "⚠️ Фақат YouTube Shorts (60 сек) қабул қилинади. "
+        "Узун видеолар таҳлил қилинмайди."
+    ),
+    "lang_lotin": "⚠️ Faqat YouTube Shorts (60 sek) qabul qilinadi.",
+    "lang_rus": "⚠️ Принимаются только YouTube Shorts (до 60 сек).",
 }
 
 _REFUSAL_PATTERNS = (
@@ -140,6 +158,38 @@ def extract_account_url(text: str) -> str | None:
         if username not in ('p', 'reel', 'reels', 'stories', 'explore', 'tv'):
             return username
     return None
+
+YOUTUBE_URL_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9.\-])(?:https?://)?(?:www\.|m\.)?(?:youtube\.com/(?:shorts/[A-Za-z0-9_\-]+|watch\?v=[A-Za-z0-9_\-]+(?:&[A-Za-z0-9=&%_\-]*)?)|youtu\.be/[A-Za-z0-9_\-]+)(?:\?[A-Za-z0-9=&%_\-]*)?",
+    re.IGNORECASE,
+)
+YOUTUBE_ALLOWED_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}
+
+
+def extract_youtube_url(text: str | None) -> str | None:
+    """Xabardan YouTube (Shorts, youtu.be yoki oddiy watch) URL'ini
+    ajratib oladi va host'ini qat'iy tekshiradi. Uzun/qisqa ekanligi
+    bu yerda emas, yuklab olishdan oldin davomiylik bo'yicha
+    tekshiriladi (download_youtube_shorts)."""
+    match = YOUTUBE_URL_PATTERN.search(text or "")
+    if not match:
+        return None
+
+    candidate = match.group(0)
+    if not candidate.lower().startswith(("http://", "https://")):
+        candidate = "https://" + candidate
+
+    hostname = (urlparse(candidate).hostname or "").lower()
+    if hostname not in YOUTUBE_ALLOWED_HOSTS:
+        return None
+
+    return candidate
+
+
+def is_youtube_shorts_path(url: str) -> bool:
+    """URL youtube.com/shorts/... shaklidami, shuni tekshiradi (faqat
+    log/status xabari uchun — qabul qilish shartiga ta'sir qilmaydi)."""
+    return "/shorts/" in urlparse(url).path.lower()
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
@@ -661,6 +711,111 @@ async def handle_reel(message: Message):
                 "lang_rus": "❌ Произошла ошибка. Пожалуйста, отправьте другую ссылку на Reels.",
             }
             await status_msg.edit_text(error_messages.get(lang, error_messages["lang_kirill"]))
+    finally:
+        if tmp_dir and os.path.exists(tmp_dir):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+@router.message(F.text.func(lambda text: extract_youtube_url(text) is not None))
+async def handle_youtube(message: Message):
+    url = extract_youtube_url(message.text)
+    lang = user_language.get(message.from_user.id, "lang_kirill")
+    logging.info(f"YOUTUBE SO'ROV: user_id={message.from_user.id} url={url} shorts_path={is_youtube_shorts_path(url)}")
+    status_msg = await message.answer(YOUTUBE_STATUS_MESSAGES.get(lang, YOUTUBE_STATUS_MESSAGES["lang_kirill"]))
+    file_path = None
+    tmp_dir = None
+    loop = asyncio.get_running_loop()
+
+    try:
+        file_path, video_caption = await download_youtube_shorts(url)
+        tmp_dir = os.path.dirname(file_path)
+
+        if lang == "lang_rus":
+            await status_msg.edit_text("🎙 Аудио преобразуется в текст...")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("🎙 Audio matnga aylantirilmoqda...")
+        else:
+            await status_msg.edit_text("🎙 Аудио матнга айлантирилаяпти...")
+
+        try:
+            whisper_lang = "ru" if lang == "lang_rus" else None
+            text = await loop.run_in_executor(None, transcribe_audio, file_path, whisper_lang)
+        except UnclearAudioError as e:
+            logging.warning(f"Aniq bo'lmagan audio (user_id={message.from_user.id}, url={url}): {e}")
+            unclear_messages = {
+                "lang_kirill": (
+                    "⚠️ Видеода аниқ товуш ёки нутқ топилмади "
+                    "(жуда қисқа ёки жуда паст овозли).\n\n"
+                    "Илтимос, бошқа YouTube Shorts ҳаволасини юборинг."
+                ),
+                "lang_lotin": (
+                    "⚠️ Videoda aniq tovush yoki nutq topilmadi "
+                    "(juda qisqa yoki juda past ovozli).\n\n"
+                    "Iltimos, boshqa YouTube Shorts havolasini yuboring."
+                ),
+                "lang_rus": (
+                    "⚠️ В видео не найден чёткий звук или речь "
+                    "(слишком коротко или слишком тихо).\n\n"
+                    "Пожалуйста, отправьте другую ссылку на YouTube Shorts."
+                ),
+            }
+            await status_msg.edit_text(unclear_messages.get(lang, unclear_messages["lang_kirill"]))
+            return
+
+        logging.info(f"WHISPER MATNI YOUTUBE (user_id={message.from_user.id}): {text[:1000]}")
+
+        if video_caption:
+            text = f"CAPTION:\n{video_caption}\n\nAUDIO MATNI:\n{text}"
+
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+            file_path = None
+
+        if lang == "lang_rus":
+            await status_msg.edit_text("🔍 Контент анализируется...")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("🔍 Mazmun tahlil qilinmoqda...")
+        else:
+            await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
+
+        analysis = await loop.run_in_executor(None, analyze_content, text, lang)
+
+        if is_moderation_refusal(analysis):
+            logging.warning(f"Moderatsiya rad etishi (handle_youtube): user_id={message.from_user.id} url={url}")
+            await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
+            return
+
+        result_text = (
+            f"🔍 <b>Таҳлил натижаси:</b>\n\n"
+            f"{html.escape(analysis)}"
+        )
+
+        if len(result_text) > 4000:
+            await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
+            await message.answer(result_text[4000:], parse_mode="HTML")
+        else:
+            await status_msg.edit_text(result_text, parse_mode="HTML")
+
+    except VideoTooLongError as e:
+        logging.warning(f"YouTube video juda uzun: user_id={message.from_user.id} url={url} duration={e.duration}s")
+        await status_msg.edit_text(YOUTUBE_TOO_LONG_MESSAGES.get(lang, YOUTUBE_TOO_LONG_MESSAGES["lang_kirill"]))
+    except asyncio.TimeoutError:
+        logging.warning(f"YouTube tahlili timeout: user_id={message.from_user.id} url={url}")
+        if lang == "lang_rus":
+            await status_msg.edit_text("⏳ YouTube слишком долго не отвечает. Попробуйте позже.")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("⏳ YouTube javob berishda kechikmoqda. Keyinroq urinib ko'ring.")
+        else:
+            await status_msg.edit_text("⏳ YouTube жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
+    except Exception as e:
+        if await handle_openai_error(status_msg, lang, e, "handle_youtube"):
+            return
+        logging.error(f"YouTube tahlili xatosi: user_id={message.from_user.id} url={url} error={e}")
+        if lang == "lang_rus":
+            await status_msg.edit_text("❌ Произошла ошибка. Попробуйте другую ссылку.")
+        elif lang == "lang_lotin":
+            await status_msg.edit_text("❌ Xatolik yuz berdi. Iltimos, boshqa havola yuboring.")
+        else:
+            await status_msg.edit_text("❌ Хато юз берди. Илтимос, бошқа ҳавола юборинг.")
     finally:
         if tmp_dir and os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir, ignore_errors=True)

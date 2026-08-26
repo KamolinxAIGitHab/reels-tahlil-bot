@@ -160,6 +160,84 @@ async def download_reels_audio(url: str):
 
     return audio_path, caption
 
+
+class VideoTooLongError(Exception):
+    """YouTube video belgilangan maksimal davomiylikdan (odatda 60
+    soniya) uzun bo'lganda ko'tariladi."""
+    def __init__(self, duration: int):
+        self.duration = duration
+        super().__init__(f"Video juda uzun: {duration} soniya")
+
+
+def _build_youtube_ydl_opts(tmp_dir: str) -> dict:
+    # Instagram cookiefile/login ma'lumotlari YouTube uchun kerak emas
+    # va tegishli emas — shuning uchun _build_ydl_opts qayta ishlatilmaydi.
+    # player_client=android — YouTube'ning "Sign in to confirm you're
+    # not a bot" bot-tekshiruvini chetlab o'tish uchun (yt-dlp'ning
+    # ma'lum workaround'i, cookie talab qilmaydi).
+    return {
+        "outtmpl": os.path.join(tmp_dir, "%(id)s.%(ext)s"),
+        "format": "mp4/bestvideo+bestaudio/best",
+        "quiet": True,
+        "no_warnings": True,
+        "merge_output_format": "mp4",
+        "extractor_args": {"youtube": {"player_client": ["android"]}},
+    }
+
+
+async def download_youtube_shorts(url: str, max_duration: int = 60):
+    """YouTube Shorts (yoki max_duration soniyagacha bo'lgan youtu.be/
+    watch videosi)ni yt-dlp orqali yuklaydi, Instagram Reels bilan bir
+    xil pipeline'da ffmpeg bilan audio yo'lakchasini ajratib oladi va
+    (audio_path, caption) qaytaradi. Video max_duration'dan uzun bo'lsa,
+    yuklab olishdan oldin (faqat metadata so'ralib) VideoTooLongError
+    ko'taradi."""
+    output_dir = "downloads"
+    os.makedirs(output_dir, exist_ok=True)
+    tmp_dir = os.path.join(output_dir, str(uuid.uuid4()))
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    loop = asyncio.get_event_loop()
+
+    def _download():
+        probe_opts = {
+            "quiet": True, "no_warnings": True, "skip_download": True,
+            "extractor_args": {"youtube": {"player_client": ["android"]}},
+        }
+        with yt_dlp.YoutubeDL(probe_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+
+        duration = info.get("duration") or 0
+        if duration > max_duration:
+            raise VideoTooLongError(int(duration))
+
+        with yt_dlp.YoutubeDL(_build_youtube_ydl_opts(tmp_dir)) as ydl:
+            ydl.download([url])
+
+        video_path = None
+        for f in os.listdir(tmp_dir):
+            if f.endswith((".mp4", ".mov", ".avi", ".mkv", ".webm")):
+                video_path = os.path.join(tmp_dir, f)
+                break
+        if not video_path:
+            raise FileNotFoundError("Video topilmadi!")
+
+        audio_path = os.path.join(tmp_dir, "audio.mp3")
+        subprocess.run(
+            ["ffmpeg", "-i", video_path, "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k", audio_path],
+            capture_output=True,
+            timeout=60,
+        )
+        os.remove(video_path)
+
+        if not os.path.exists(audio_path):
+            raise FileNotFoundError("Audio ajratib olinmadi!")
+
+        caption = info.get("description") or info.get("title") or ""
+        return audio_path, caption
+
+    return await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=90)
+
 async def download_instagram_image(url: str):
     """Instagram post (/p/...) rasmlarini yuklaydi — bitta rasm yoki karusel
     (GraphSidecar) bo'lishi mumkin. (images: list[str], caption: str) qaytaradi."""
