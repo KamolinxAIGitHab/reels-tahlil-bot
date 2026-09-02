@@ -13,6 +13,7 @@ from openai import RateLimitError, AuthenticationError, BadRequestError
 from bot.utils.downloader import (
     download_reels_audio, download_instagram_image, download_account_posts,
     download_youtube_shorts, VideoTooLongError, AudioExtractionFailedError,
+    CookieExpiredError,
 )
 from bot.utils import stats
 from bot.utils.stt import transcribe_audio, UnclearAudioError
@@ -20,7 +21,31 @@ from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_c
 
 router = Router()
 
+ADMIN_USER_ID = 47575298
+
 user_language: dict[int, str] = {}
+
+COOKIE_EXPIRED_USER_MESSAGES = {
+    "lang_kirill": "⚠️ Техник носозлик. Тез орада тузатилади.",
+    "lang_lotin": "⚠️ Texnik nosozlik. Tez orada tuzatiladi.",
+    "lang_rus": "⚠️ Техническая неполадка. Скоро будет исправлено.",
+}
+
+COOKIE_EXPIRED_ADMIN_MESSAGE = (
+    "⚠️ Instagram cookie eskirdi! COOKIE_YANGILASH.md bo'yicha yangilang."
+)
+
+
+async def notify_cookie_expired(message: Message, lang: str, source_type: str) -> None:
+    """Instagram cookie eskirganda foydalanuvchiga texnik nosozlik
+    xabarini, adminga esa cookie yangilash haqida alohida ogohlantirish
+    yuboradi va statistikaga 'cookie_expired' sifatida yozadi."""
+    logging.error(f"Instagram cookie eskirgan ({source_type}): user_id={message.from_user.id}")
+    stats.log_analysis(message.from_user.id, source_type, lang, "error", "cookie_expired")
+    try:
+        await message.bot.send_message(ADMIN_USER_ID, COOKIE_EXPIRED_ADMIN_MESSAGE)
+    except Exception as e:
+        logging.error(f"Adminga cookie ogohlantirishini yuborib bo'lmadi: {e}")
 
 OPENAI_CREDIT_MESSAGES = {
     "lang_kirill": (
@@ -453,6 +478,9 @@ async def handle_account(message: Message):
             await status_msg.edit_text("⏳ Instagram javob berishda kechikmoqda. Keyinroq urinib ko'ring.")
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
+    except CookieExpiredError:
+        await notify_cookie_expired(message, lang, "instagram_account")
+        await status_msg.edit_text(COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"]))
     except Exception as e:
         if await handle_openai_error(status_msg, lang, e, "handle_account", message.from_user.id, "instagram_account"):
             return
@@ -534,6 +562,9 @@ async def handle_post(message: Message):
             await status_msg.edit_text("⏳ Instagram javob berishda kechikmoqda. Keyinroq urinib ko'ring.")
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
+    except CookieExpiredError:
+        await notify_cookie_expired(message, lang, "instagram_post")
+        await status_msg.edit_text(COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"]))
     except Exception as e:
         if await handle_openai_error(status_msg, lang, e, "handle_post", message.from_user.id, "instagram_post"):
             return
@@ -853,6 +884,9 @@ async def handle_reel(message: Message):
             await status_msg.edit_text("⏳ Instagram javob berishda kechikmoqda. Keyinroq urinib ko'ring.")
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
+    except CookieExpiredError:
+        await notify_cookie_expired(message, lang, "instagram_reels")
+        await status_msg.edit_text(COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"]))
     except Exception as e:
         if await handle_openai_error(status_msg, lang, e, "handle_reel", message.from_user.id, "instagram_reels"):
             return

@@ -16,6 +16,21 @@ _LOCAL_COOKIES = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "..", "cookies.txt")
 )
 
+
+class CookieExpiredError(Exception):
+    """Instagram cookie eskirgan yoki yaroqsiz bo'lganda (LoginRequired
+    yoki 401 javobi) ko'tariladi — cookies.txt'ni yangilash kerakligini
+    bildiradi (qarang: COOKIE_YANGILASH.md)."""
+
+
+def _is_cookie_expired(e: Exception) -> bool:
+    """Berilgan xato Instagram cookie eskirganini (LoginRequired yoki
+    401) bildiradimi, shuni tekshiradi."""
+    if isinstance(e, instaloader.LoginRequiredException):
+        return True
+    msg = str(e).lower()
+    return "401" in msg or "login required" in msg or "please log in" in msg
+
 def _resolve_cookies_file() -> str | None:
     # 1. INSTAGRAM_COOKIES env var — base64 decode qilib /tmp ga yoz
     if INSTAGRAM_COOKIES:
@@ -126,8 +141,13 @@ async def download_reels_audio(url: str):
             return ""
 
     def _download():
-        with yt_dlp.YoutubeDL(_build_ydl_opts(tmp_dir)) as ydl:
-            ydl.download([url])
+        try:
+            with yt_dlp.YoutubeDL(_build_ydl_opts(tmp_dir)) as ydl:
+                ydl.download([url])
+        except Exception as e:
+            if _is_cookie_expired(e):
+                raise CookieExpiredError("Instagram cookie eskirgan (video yuklashda)") from e
+            raise
 
         video_path = None
         for f in os.listdir(tmp_dir):
@@ -310,20 +330,25 @@ async def download_instagram_image(url: str):
             raise ValueError("Instagram post URL notogri")
         shortcode = match.group(1)
 
-        post = instaloader.Post.from_shortcode(L.context, shortcode)
-        caption = post.caption or ""
-        images = []
+        try:
+            post = instaloader.Post.from_shortcode(L.context, shortcode)
+            caption = post.caption or ""
+            images = []
 
-        if post.typename == "GraphSidecar":
-            for i, node in enumerate(post.get_sidecar_nodes()):
-                if not node.is_video:
-                    img_path = os.path.join(tmp_dir, f"slide_{i}.jpg")
-                    urllib.request.urlretrieve(node.display_url, img_path)
-                    images.append(img_path)
-        elif post.typename == "GraphImage":
-            img_path = os.path.join(tmp_dir, f"{shortcode}.jpg")
-            urllib.request.urlretrieve(post.url, img_path)
-            images.append(img_path)
+            if post.typename == "GraphSidecar":
+                for i, node in enumerate(post.get_sidecar_nodes()):
+                    if not node.is_video:
+                        img_path = os.path.join(tmp_dir, f"slide_{i}.jpg")
+                        urllib.request.urlretrieve(node.display_url, img_path)
+                        images.append(img_path)
+            elif post.typename == "GraphImage":
+                img_path = os.path.join(tmp_dir, f"{shortcode}.jpg")
+                urllib.request.urlretrieve(post.url, img_path)
+                images.append(img_path)
+        except Exception as e:
+            if _is_cookie_expired(e):
+                raise CookieExpiredError("Instagram cookie eskirgan (post o'qishda)") from e
+            raise
 
         if not images:
             raise ValueError("Rasmlar topilmadi")
@@ -365,6 +390,8 @@ async def download_account_posts(username: str) -> list:
                 profile = instaloader.Profile.from_username(L.context, username)
                 break
             except Exception as e:
+                if _is_cookie_expired(e):
+                    raise CookieExpiredError("Instagram cookie eskirgan (profil o'qishda)") from e
                 last_exc = e
                 msg = str(e).lower()
                 if not any(k in msg for k in ("429", "too many", "wait a few minutes")):
@@ -374,16 +401,21 @@ async def download_account_posts(username: str) -> list:
 
         posts = []
 
-        for post in itertools.islice(profile.get_posts(), 6):
-            posts.append({
-                "caption": post.caption or "",
-                "typename": post.typename,
-                "likes": post.likes,
-                "comments": post.comments,
-                "date": str(post.date_utc)[:10],
-                "url": f"https://www.instagram.com/p/{post.shortcode}/",
-            })
-            time.sleep(2)  # har post orasida 2 soniya kutish
+        try:
+            for post in itertools.islice(profile.get_posts(), 6):
+                posts.append({
+                    "caption": post.caption or "",
+                    "typename": post.typename,
+                    "likes": post.likes,
+                    "comments": post.comments,
+                    "date": str(post.date_utc)[:10],
+                    "url": f"https://www.instagram.com/p/{post.shortcode}/",
+                })
+                time.sleep(2)  # har post orasida 2 soniya kutish
+        except Exception as e:
+            if _is_cookie_expired(e):
+                raise CookieExpiredError("Instagram cookie eskirgan (postlarni o'qishda)") from e
+            raise
 
         return posts, profile.biography or ""
 
