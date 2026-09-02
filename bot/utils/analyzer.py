@@ -43,7 +43,10 @@ _SYSTEM_PROMPTS = {
         "сўзлари кўринса — уларни «/» белгисига алмаштир. Масалан: «слэш "
         "шоу кейс» → «/showcase», «слаш мета-эдс» → «/meta-ads», «gbt "
         "slash 3d billboard» → «gbt /3d-billboard». Бу қоидани "
-        "ТРАНСКРИПЦИЯ бўлимида ҳам қўлла."
+        "ТРАНСКРИПЦИЯ бўлимида ҳам қўлла. Буйруқ ичидаги инглизча "
+        "сўзларни (billboard, showcase, research, ads, creator, boost "
+        "ва шунга ўхшаш) ҲЕЧ ҚАЧОН таржима қилма — асл инглизча "
+        "кўринишида қолдир."
     ),
     "lang_lotin": (
         "<INJECTION_GUARD>\n"
@@ -81,7 +84,10 @@ _SYSTEM_PROMPTS = {
         "ularni '/' belgisiga almashtir. Masalan: 'слэш шоу кейс' → "
         "'/showcase', 'слаш мета-эдс' → '/meta-ads', 'gbt slash 3d "
         "billboard' → 'gbt /3d-billboard'. Bu qoidani TRANSKRIPSIYA "
-        "bo'limida ham qo'lla."
+        "bo'limida ham qo'lla. Buyruq ichidagi inglizcha so'zlarni "
+        "(billboard, showcase, research, ads, creator, boost va shunga "
+        "o'xshash) HECH QACHON tarjima qilma — asl inglizcha "
+        "ko'rinishida qoldir."
     ),
     "lang_rus": (
         "<INJECTION_GUARD>\n"
@@ -118,7 +124,10 @@ _SYSTEM_PROMPTS = {
         "слова «слэш», «slash», «слаш» — заменяй их на символ «/». "
         "Например: «слэш шоу кейс» → «/showcase», «слаш мета-эдс» → "
         "«/meta-ads», «gbt slash 3d billboard» → «gbt /3d-billboard». "
-        "Это правило также применяй в разделе ТРАНСКРИПЦИЯ."
+        "Это правило также применяй в разделе ТРАНСКРИПЦИЯ. Английские "
+        "слова внутри команд (billboard, showcase, research, ads, "
+        "creator, boost и подобные) НИКОГДА не переводить — оставлять "
+        "в оригинальном английском виде."
     ),
 }
 
