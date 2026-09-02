@@ -324,7 +324,10 @@ async def cmd_stats(message: Message):
     hourly_text = ""
     if s["hourly"]:
         hourly_rows = "\n".join(f"{h}:00 — {c} та" for h, c in sorted(s["hourly"].items()))
-        hourly_text = f"\n\n📈 Бугунги фаоллик:\n{hourly_rows}"
+        hourly_text = (
+            f"\n\n📈 Бугунги фаоллик:\n{hourly_rows}\n"
+            f"Жами: {s['today_total']} та"
+        )
 
     if lang == "lang_rus":
         text = (
