@@ -18,7 +18,8 @@ def _connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """analysis_log jadvalini (mavjud bo'lmasa) yaratadi."""
+    """analysis_log jadvalini (mavjud bo'lmasa) yaratadi va yangi
+    ustunlarni (masalan fallback_used) eski bazalarga ham qo'shadi."""
     conn = _connect()
     try:
         conn.execute(
@@ -31,10 +32,17 @@ def init_db() -> None:
                 language TEXT NOT NULL,
                 status TEXT NOT NULL,
                 error_type TEXT,
-                error_detail TEXT
+                error_detail TEXT,
+                fallback_used INTEGER NOT NULL DEFAULT 0
             )
             """
         )
+        try:
+            conn.execute(
+                "ALTER TABLE analysis_log ADD COLUMN fallback_used INTEGER NOT NULL DEFAULT 0"
+            )
+        except sqlite3.OperationalError:
+            pass
         conn.commit()
     finally:
         conn.close()
@@ -50,6 +58,7 @@ def log_analysis(
     status: str,
     error_type: str | None = None,
     error_detail: str | None = None,
+    fallback_used: int = 0,
 ) -> None:
     """Bitta so'rov natijasini analysis_log jadvaliga yozadi. Statistika
     yozish botning asosiy funksionalligini to'xtatmasligi kerak, shuning
@@ -59,8 +68,8 @@ def log_analysis(
         try:
             conn.execute(
                 "INSERT INTO analysis_log "
-                "(user_id, timestamp, source_type, language, status, error_type, error_detail) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "(user_id, timestamp, source_type, language, status, error_type, error_detail, fallback_used) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     user_id,
                     datetime.now(timezone.utc).isoformat(),
@@ -69,6 +78,7 @@ def log_analysis(
                     status,
                     error_type,
                     (error_detail or "")[:500] or None,
+                    fallback_used,
                 ),
             )
             conn.commit()
@@ -112,6 +122,7 @@ def get_stats() -> dict:
 
         by_source = {st: count(" WHERE source_type = ?", (st,)) for st in SOURCE_TYPES}
         by_lang = {lang: count(" WHERE language = ?", (lang,)) for lang in LANGUAGES}
+        fallback_used_count = count(" WHERE fallback_used = 1")
 
         return {
             "today_total": today_total,
@@ -123,6 +134,7 @@ def get_stats() -> dict:
             "all_total": all_total,
             "by_source": by_source,
             "by_lang": by_lang,
+            "fallback_used_count": fallback_used_count,
         }
     finally:
         conn.close()

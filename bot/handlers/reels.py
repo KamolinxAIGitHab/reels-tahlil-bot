@@ -318,7 +318,8 @@ async def cmd_stats(message: Message):
             f"📌 По языку (всего):\n"
             f"  🇺🇿 Узбекский кириллица: {lng['lang_kirill']}\n"
             f"  🔤 Узбекский латиница: {lng['lang_lotin']}\n"
-            f"  🇷🇺 Русский: {lng['lang_rus']}"
+            f"  🇷🇺 Русский: {lng['lang_rus']}\n\n"
+            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta"
         )
     elif lang == "lang_lotin":
         text = (
@@ -342,7 +343,8 @@ async def cmd_stats(message: Message):
             f"📌 Til bo'yicha (jami):\n"
             f"  🇺🇿 O'zbek kirill: {lng['lang_kirill']}\n"
             f"  🔤 O'zbek lotin: {lng['lang_lotin']}\n"
-            f"  🇷🇺 Rus: {lng['lang_rus']}"
+            f"  🇷🇺 Rus: {lng['lang_rus']}\n\n"
+            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta"
         )
     else:
         text = (
@@ -366,7 +368,8 @@ async def cmd_stats(message: Message):
             f"📌 Тил бўйича (жами):\n"
             f"  🇺🇿 Ўзбек кирилл: {lng['lang_kirill']}\n"
             f"  🔤 Ўзбек лотин: {lng['lang_lotin']}\n"
-            f"  🇷🇺 Рус: {lng['lang_rus']}"
+            f"  🇷🇺 Рус: {lng['lang_rus']}\n\n"
+            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta"
         )
     await message.answer(text)
 
@@ -625,6 +628,7 @@ async def handle_voice(message: Message):
             await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
 
         from bot.utils.analyzer import analyze_content
+        fallback_used = False
         try:
             analysis = await loop.run_in_executor(None, analyze_content, text, lang)
             refused = is_moderation_refusal(analysis)
@@ -653,6 +657,7 @@ async def handle_voice(message: Message):
                 await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
                 return
             else:
+                fallback_used = True
                 logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_voice): user_id={message.from_user.id}")
 
         result_text = f"🔍 <b>Таҳлил натижаси:</b>\n\n{html.escape(analysis)}"
@@ -663,7 +668,7 @@ async def handle_voice(message: Message):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
-        stats.log_analysis(message.from_user.id, "voice", lang, "success")
+        stats.log_analysis(message.from_user.id, "voice", lang, "success", fallback_used=1 if fallback_used else 0)
 
     except UnclearAudioError:
         stats.log_analysis(message.from_user.id, "voice", lang, "error", "other", "audio sifati past")
@@ -795,6 +800,7 @@ async def handle_reel(message: Message):
         else:
             await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
 
+        fallback_used = False
         try:
             analysis = await loop.run_in_executor(None, analyze_content, text, lang)
             refused = is_moderation_refusal(analysis)
@@ -823,6 +829,7 @@ async def handle_reel(message: Message):
                 await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
                 return
             else:
+                fallback_used = True
                 logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_reel): user_id={message.from_user.id} url={url}")
 
         result_text = (
@@ -836,7 +843,7 @@ async def handle_reel(message: Message):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
-        stats.log_analysis(message.from_user.id, "instagram_reels", lang, "success")
+        stats.log_analysis(message.from_user.id, "instagram_reels", lang, "success", fallback_used=1 if fallback_used else 0)
 
     except asyncio.TimeoutError:
         stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "download_error", "timeout")
@@ -946,6 +953,7 @@ async def handle_youtube(message: Message):
         else:
             await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
 
+        fallback_used = False
         try:
             analysis = await loop.run_in_executor(None, analyze_content, text, lang)
             refused = is_moderation_refusal(analysis)
@@ -974,6 +982,7 @@ async def handle_youtube(message: Message):
                 await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
                 return
             else:
+                fallback_used = True
                 logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_youtube): user_id={message.from_user.id} url={url}")
 
         result_text = (
@@ -987,7 +996,7 @@ async def handle_youtube(message: Message):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
-        stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "success")
+        stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "success", fallback_used=1 if fallback_used else 0)
 
     except VideoTooLongError as e:
         logging.warning(f"YouTube video juda uzun: user_id={message.from_user.id} url={url} duration={e.duration}s")
