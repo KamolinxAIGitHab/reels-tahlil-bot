@@ -6,10 +6,11 @@ import base64
 import subprocess
 import http.cookiejar
 import instaloader
+from bot.config import settings
 
-INSTAGRAM_USER    = os.getenv("INSTAGRAM_USERNAME")
+INSTAGRAM_USER    = settings.instagram_username
 INSTAGRAM_PASS    = os.getenv("INSTAGRAM_PASSWORD")
-INSTAGRAM_COOKIES = os.getenv("INSTAGRAM_COOKIES")
+INSTAGRAM_COOKIES = settings.instagram_cookies
 
 _LOCAL_COOKIES = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "..", "cookies.txt")
