@@ -124,6 +124,14 @@ def get_stats() -> dict:
         by_lang = {lang: count(" WHERE language = ?", (lang,)) for lang in LANGUAGES}
         fallback_used_count = count(" WHERE fallback_used = 1")
 
+        cur.execute(
+            "SELECT strftime('%H', timestamp) as hour, COUNT(*) as count "
+            "FROM analysis_log "
+            "WHERE date(timestamp) = date('now', 'localtime') "
+            "GROUP BY hour ORDER BY hour"
+        )
+        hourly = {hour: cnt for hour, cnt in cur.fetchall()}
+
         return {
             "today_total": today_total,
             "today_success": today_success,
@@ -135,6 +143,7 @@ def get_stats() -> dict:
             "by_source": by_source,
             "by_lang": by_lang,
             "fallback_used_count": fallback_used_count,
+            "hourly": hourly,
         }
     finally:
         conn.close()

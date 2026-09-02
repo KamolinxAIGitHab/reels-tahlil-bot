@@ -321,6 +321,11 @@ async def cmd_stats(message: Message):
     src = s["by_source"]
     lng = s["by_lang"]
 
+    hourly_text = ""
+    if s["hourly"]:
+        hourly_rows = "\n".join(f"{h}:00 — {c} та" for h, c in sorted(s["hourly"].items()))
+        hourly_text = f"\n\n📈 Бугунги фаоллик:\n{hourly_rows}"
+
     if lang == "lang_rus":
         text = (
             f"📊 Статистика:\n"
@@ -345,6 +350,7 @@ async def cmd_stats(message: Message):
             f"  🔤 Узбекский латиница: {lng['lang_lotin']}\n"
             f"  🇷🇺 Русский: {lng['lang_rus']}\n\n"
             f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta"
+            f"{hourly_text}"
         )
     elif lang == "lang_lotin":
         text = (
@@ -370,6 +376,7 @@ async def cmd_stats(message: Message):
             f"  🔤 O'zbek lotin: {lng['lang_lotin']}\n"
             f"  🇷🇺 Rus: {lng['lang_rus']}\n\n"
             f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta"
+            f"{hourly_text}"
         )
     else:
         text = (
@@ -395,6 +402,7 @@ async def cmd_stats(message: Message):
             f"  🔤 Ўзбек лотин: {lng['lang_lotin']}\n"
             f"  🇷🇺 Рус: {lng['lang_rus']}\n\n"
             f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta"
+            f"{hourly_text}"
         )
     await message.answer(text)
 
