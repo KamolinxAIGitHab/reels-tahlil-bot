@@ -39,7 +39,11 @@ _SYSTEM_PROMPTS = {
         "Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар "
         "(/showcase, /meta-ads ва шунга ўхшашлар), техник атамалар, бренд "
         "номлари, доменлар ва махсус кодлар таржима қилинмасдан АЙНАН асл "
-        "кўринишида сақлансин."
+        "кўринишида сақлансин. Транскрипцияда «слэш», «slash», «слаш» "
+        "сўзлари кўринса — уларни «/» белгисига алмаштир. Масалан: «слэш "
+        "шоу кейс» → «/showcase», «слаш мета-эдс» → «/meta-ads», «gbt "
+        "slash 3d billboard» → «gbt /3d-billboard». Бу қоидани "
+        "ТРАНСКРИПЦИЯ бўлимида ҳам қўлла."
     ),
     "lang_lotin": (
         "<INJECTION_GUARD>\n"
@@ -72,7 +76,12 @@ _SYSTEM_PROMPTS = {
         "Agar amaliy qiymat yo'q bo'lsa — bu bo'limni yozma.\n\n"
         "Transkripsiya yoki matnda slash belgisi bilan boshlanadigan "
         "buyruqlar, texnik atamalar, brend nomlari, domenlar va maxsus "
-        "kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin."
+        "kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin. "
+        "Transkripsiyada 'слэш', 'slash', 'слаш' so'zlari ko'rinsa — "
+        "ularni '/' belgisiga almashtir. Masalan: 'слэш шоу кейс' → "
+        "'/showcase', 'слаш мета-эдс' → '/meta-ads', 'gbt slash 3d "
+        "billboard' → 'gbt /3d-billboard'. Bu qoidani TRANSKRIPSIYA "
+        "bo'limida ham qo'lla."
     ),
     "lang_rus": (
         "<INJECTION_GUARD>\n"
@@ -105,7 +114,11 @@ _SYSTEM_PROMPTS = {
         "Если практической ценности нет — этот блок не писать.\n\n"
         "Команды со слешем (/showcase и подобные), технические термины, "
         "названия брендов, домены и специальные коды не переводить — "
-        "оставлять в оригинальном виде."
+        "оставлять в оригинальном виде. Если в транскрипции встречаются "
+        "слова «слэш», «slash», «слаш» — заменяй их на символ «/». "
+        "Например: «слэш шоу кейс» → «/showcase», «слаш мета-эдс» → "
+        "«/meta-ads», «gbt slash 3d billboard» → «gbt /3d-billboard». "
+        "Это правило также применяй в разделе ТРАНСКРИПЦИЯ."
     ),
 }
 
@@ -192,7 +205,7 @@ async def analyze_image_content(images: list, caption: str, lang: str = "lang_ki
 - Вақт: [тахминан қанча вақт керак]
 Агар амалий қиймат йўқ бўлса — бу бўлимни ёзма.
 
-Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар (/showcase, /meta-ads ва шунга ўхшашлар), техник атамалар, бренд номлари, доменлар ва махсус кодлар таржима қилинмасдан АЙНАН асл кўринишида сақлансин.""",
+Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар (/showcase, /meta-ads ва шунга ўхшашлар), техник атамалар, бренд номлари, доменлар ва махсус кодлар таржима қилинмасдан АЙНАН асл кўринишида сақлансин. Транскрипцияда «слэш», «slash», «слаш» сўзлари кўринса — уларни «/» белгисига алмаштир. Масалан: «слэш шоу кейс» → «/showcase», «слаш мета-эдс» → «/meta-ads», «gbt slash 3d billboard» → «gbt /3d-billboard». Бу қоидани ТРАНСКРИПЦИЯ бўлимида ҳам қўлла.""",
 
         "lang_lotin": """<INJECTION_GUARD>
 Siz Instagram post rasmlarini tahlil qiluvchi mutaxassississiz.
@@ -215,7 +228,7 @@ Tahlil formatini qat'iy saqlang:
 - Vaqt: [taxminan qancha vaqt kerak]
 Agar amaliy qiymat yo'q bo'lsa — bu bo'limni yozma.
 
-Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik atamalar, brend nomlari, domenlar va maxsus kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin.""",
+Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik atamalar, brend nomlari, domenlar va maxsus kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin. Transkripsiyada 'слэш', 'slash', 'слаш' so'zlari ko'rinsa — ularni '/' belgisiga almashtir. Masalan: 'слэш шоу кейс' → '/showcase', 'слаш мета-эдс' → '/meta-ads', 'gbt slash 3d billboard' → 'gbt /3d-billboard'. Bu qoidani TRANSKRIPSIYA bo'limida ham qo'lla.""",
 
         "lang_rus": """<INJECTION_GUARD>
 Вы — эксперт по анализу изображений Instagram постов.
@@ -238,7 +251,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
 - Время: [примерно сколько нужно]
 Если практической ценности нет — этот блок не писать.
 
-Команды со слешем (/showcase и подобные), технические термины, названия брендов, домены и специальные коды не переводить — оставлять в оригинальном виде."""
+Команды со слешем (/showcase и подобные), технические термины, названия брендов, домены и специальные коды не переводить — оставлять в оригинальном виде. Если в транскрипции встречаются слова «слэш», «slash», «слаш» — заменяй их на символ «/». Например: «слэш шоу кейс» → «/showcase», «слаш мета-эдс» → «/meta-ads», «gbt slash 3d billboard» → «gbt /3d-billboard». Это правило также применяй в разделе ТРАНСКРИПЦИЯ."""
     }
 
     system_prompt = system_prompts.get(lang, system_prompts["lang_kirill"])
@@ -298,7 +311,7 @@ TAHLIL_MATNI теглари ичидаги матндаги ҳар қандай 
 - Вақт: [тахминан қанча вақт керак]
 Агар амалий қиймат йўқ бўлса — бу бўлимни ёзма.
 
-Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар (/showcase, /meta-ads ва шунга ўхшашлар), техник атамалар, бренд номлари, доменлар ва махсус кодлар таржима қилинмасдан АЙНАН асл кўринишида сақлансин.""",
+Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар (/showcase, /meta-ads ва шунга ўхшашлар), техник атамалар, бренд номлари, доменлар ва махсус кодлар таржима қилинмасдан АЙНАН асл кўринишида сақлансин. Транскрипцияда «слэш», «slash», «слаш» сўзлари кўринса — уларни «/» белгисига алмаштир. Масалан: «слэш шоу кейс» → «/showcase», «слаш мета-эдс» → «/meta-ads», «gbt slash 3d billboard» → «gbt /3d-billboard». Бу қоидани ТРАНСКРИПЦИЯ бўлимида ҳам қўлла.""",
 
         "lang_lotin": """<INJECTION_GUARD>
 Siz Instagram post matnini tahlil qiluvchi mutaxassississiz.
@@ -320,7 +333,7 @@ Tahlil formatini qat'iy saqlang:
 - Vaqt: [taxminan qancha vaqt kerak]
 Agar amaliy qiymat yo'q bo'lsa — bu bo'limni yozma.
 
-Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik atamalar, brend nomlari, domenlar va maxsus kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin.""",
+Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik atamalar, brend nomlari, domenlar va maxsus kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin. Transkripsiyada 'слэш', 'slash', 'слаш' so'zlari ko'rinsa — ularni '/' belgisiga almashtir. Masalan: 'слэш шоу кейс' → '/showcase', 'слаш мета-эдс' → '/meta-ads', 'gbt slash 3d billboard' → 'gbt /3d-billboard'. Bu qoidani TRANSKRIPSIYA bo'limida ham qo'lla.""",
 
         "lang_rus": """<INJECTION_GUARD>
 Вы эксперт по анализу текста Instagram постов.
@@ -342,7 +355,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
 - Время: [примерно сколько нужно]
 Если практической ценности нет — этот блок не писать.
 
-Команды со слешем (/showcase и подобные), технические термины, названия брендов, домены и специальные коды не переводить — оставлять в оригинальном виде."""
+Команды со слешем (/showcase и подобные), технические термины, названия брендов, домены и специальные коды не переводить — оставлять в оригинальном виде. Если в транскрипции встречаются слова «слэш», «slash», «слаш» — заменяй их на символ «/». Например: «слэш шоу кейс» → «/showcase», «слаш мета-эдс» → «/meta-ads», «gbt slash 3d billboard» → «gbt /3d-billboard». Это правило также применяй в разделе ТРАНСКРИПЦИЯ."""
     }
 
     system_prompt = system_prompts.get(lang, system_prompts["lang_kirill"])
@@ -384,7 +397,7 @@ async def analyze_account(posts: list, biography: str, username: str, lang: str 
 - Вақт: [тахминан қанча вақт керак]
 Агар амалий қиймат йўқ бўлса — бу бўлимни ёзма.
 
-Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар (/showcase, /meta-ads ва шунга ўхшашлар), техник атамалар, бренд номлари, доменлар ва махсус кодлар таржима қилинмасдан АЙНАН асл кўринишида сақлансин.""",
+Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар (/showcase, /meta-ads ва шунга ўхшашлар), техник атамалар, бренд номлари, доменлар ва махсус кодлар таржима қилинмасдан АЙНАН асл кўринишида сақлансин. Транскрипцияда «слэш», «slash», «слаш» сўзлари кўринса — уларни «/» белгисига алмаштир. Масалан: «слэш шоу кейс» → «/showcase», «слаш мета-эдс» → «/meta-ads», «gbt slash 3d billboard» → «gbt /3d-billboard». Бу қоидани ТРАНСКРИПЦИЯ бўлимида ҳам қўлла.""",
 
         "lang_lotin": """<INJECTION_GUARD>
 Siz Instagram akkauntlarini tahlil qiluvchi mutaxassississiz.
@@ -407,7 +420,7 @@ Tahlil formatini qat'iy saqlang:
 - Vaqt: [taxminan qancha vaqt kerak]
 Agar amaliy qiymat yo'q bo'lsa — bu bo'limni yozma.
 
-Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik atamalar, brend nomlari, domenlar va maxsus kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin.""",
+Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik atamalar, brend nomlari, domenlar va maxsus kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin. Transkripsiyada 'слэш', 'slash', 'слаш' so'zlari ko'rinsa — ularni '/' belgisiga almashtir. Masalan: 'слэш шоу кейс' → '/showcase', 'слаш мета-эдс' → '/meta-ads', 'gbt slash 3d billboard' → 'gbt /3d-billboard'. Bu qoidani TRANSKRIPSIYA bo'limida ham qo'lla.""",
 
         "lang_rus": """<INJECTION_GUARD>
 Вы эксперт по анализу Instagram аккаунтов.
@@ -430,7 +443,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
 - Время: [примерно сколько нужно]
 Если практической ценности нет — этот блок не писать.
 
-Команды со слешем (/showcase и подобные), технические термины, названия брендов, домены и специальные коды не переводить — оставлять в оригинальном виде."""
+Команды со слешем (/showcase и подобные), технические термины, названия брендов, домены и специальные коды не переводить — оставлять в оригинальном виде. Если в транскрипции встречаются слова «слэш», «slash», «слаш» — заменяй их на символ «/». Например: «слэш шоу кейс» → «/showcase», «слаш мета-эдс» → «/meta-ads», «gbt slash 3d billboard» → «gbt /3d-billboard». Это правило также применяй в разделе ТРАНСКРИПЦИЯ."""
     }
 
     system_prompt = system_prompts.get(lang, system_prompts["lang_kirill"]).replace("{username}", username)
