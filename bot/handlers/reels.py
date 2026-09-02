@@ -47,14 +47,8 @@ OPENAI_AUTH_MESSAGES = {
 }
 
 MODERATION_MESSAGES = {
-    "lang_kirill": (
-        "⚠️ Бу контент таҳлил қилинмади. Instagram Reels мазмуни "
-        "бизнинг хизмат шартларимизга мос келмади."
-    ),
-    "lang_lotin": (
-        "⚠️ Bu kontent tahlil qilinmadi. Mazmun xizmat "
-        "shartlarimizga mos kelmadi."
-    ),
+    "lang_kirill": "⚠️ Ушбу контент таҳлил қилинмади. Мазмун хизмат шартларига мос келмайди.",
+    "lang_lotin": "⚠️ Ushbu kontent tahlil qilinmadi. Mazmun xizmat shartlariga mos kelmaydi.",
     "lang_rus": (
         "⚠️ Контент не был проанализирован. Содержание не "
         "соответствует условиям сервиса."
