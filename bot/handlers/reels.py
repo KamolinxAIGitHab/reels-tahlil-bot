@@ -323,11 +323,15 @@ async def cmd_stats(message: Message):
 
     hourly_text = ""
     if s["hourly"]:
-        hourly_rows = "\n".join(f"{h}:00 — {c} та" for h, c in sorted(s["hourly"].items()))
-        hourly_text = (
-            f"\n\n📈 Бугунги фаоллик:\n{hourly_rows}\n"
-            f"Жами: {s['today_total']} та"
-        )
+        if lang == "lang_rus":
+            hourly_rows = "\n".join(f"{h}:00 — {c}" for h, c in sorted(s["hourly"].items()))
+            hourly_text = f"\n\n📈 Активность сегодня:\n{hourly_rows}\nВсего: {s['today_total']}"
+        elif lang == "lang_lotin":
+            hourly_rows = "\n".join(f"{h}:00 — {c} ta" for h, c in sorted(s["hourly"].items()))
+            hourly_text = f"\n\n📈 Bugungi faollik:\n{hourly_rows}\nJami: {s['today_total']} ta"
+        else:
+            hourly_rows = "\n".join(f"{h}:00 — {c} та" for h, c in sorted(s["hourly"].items()))
+            hourly_text = f"\n\n📈 Бугунги фаоллик:\n{hourly_rows}\nЖами: {s['today_total']} та"
 
     if lang == "lang_rus":
         text = (
