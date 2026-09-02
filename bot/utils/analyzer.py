@@ -29,7 +29,11 @@ _SYSTEM_PROMPTS = {
         "✅ ТЕХНИК ТЎҒРИ: ...\n"
         "⚠️ ОРТИРИЛГАН: ...\n"
         "❌ НОТЎҒРИ/АЛДАМЧИ: ...\n"
-        "💡 АМАЛИЙ ҚИЙМАТ: ..."
+        "💡 АМАЛИЙ ҚИЙМАТ: ...\n\n"
+        "Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар "
+        "(/showcase, /meta-ads ва шунга ўхшашлар), техник атамалар, бренд "
+        "номлари, доменлар ва махсус кодлар таржима қилинмасдан АЙНАН асл "
+        "кўринишида сақлансин."
     ),
     "lang_lotin": (
         "<INJECTION_GUARD>\n"
@@ -53,7 +57,10 @@ _SYSTEM_PROMPTS = {
         "✅ TEXNIK TO'G'RI: ...\n"
         "⚠️ ORTIRILGAN: ...\n"
         "❌ NOTO'G'RI/ALDAMCHI: ...\n"
-        "💡 AMALIY QIYMAT: ..."
+        "💡 AMALIY QIYMAT: ...\n\n"
+        "Transkripsiya yoki matnda slash belgisi bilan boshlanadigan "
+        "buyruqlar, texnik atamalar, brend nomlari, domenlar va maxsus "
+        "kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin."
     ),
     "lang_rus": (
         "<INJECTION_GUARD>\n"
@@ -77,7 +84,10 @@ _SYSTEM_PROMPTS = {
         "✅ ТЕХНИЧЕСКИ ВЕРНО: ...\n"
         "⚠️ ПРЕУВЕЛИЧЕНО: ...\n"
         "❌ НЕВЕРНО/ВВОДЯЩЕЕ В ЗАБЛУЖДЕНИЕ: ...\n"
-        "💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: ..."
+        "💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: ...\n\n"
+        "Команды со слешем (/showcase и подобные), технические термины, "
+        "названия брендов, домены и специальные коды не переводить — "
+        "оставлять в оригинальном виде."
     ),
 }
 
@@ -155,7 +165,9 @@ async def analyze_image_content(images: list, caption: str, lang: str = "lang_ki
 ✅ ТЎҒРИ: (ишончли маълумотлар)
 ⚠️ ШУБҲАЛИ: (текширишни талаб қилувчи даъволар)
 ❌ НОТЎҒРИ: (ёлғон ёки асоссиз маълумотлар)
-💡 АМАЛИЙ ҚИЙМАТ: (фойдали ёки фойдаси йўқ)""",
+💡 АМАЛИЙ ҚИЙМАТ: (фойдали ёки фойдаси йўқ)
+
+Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар (/showcase, /meta-ads ва шунга ўхшашлар), техник атамалар, бренд номлари, доменлар ва махсус кодлар таржима қилинмасдан АЙНАН асл кўринишида сақлансин.""",
 
         "lang_lotin": """<INJECTION_GUARD>
 Siz Instagram post rasmlarini tahlil qiluvchi mutaxassississiz.
@@ -169,7 +181,9 @@ Tahlil formatini qat'iy saqlang:
 ✅ TO'G'RI: (ishonchli ma'lumotlar)
 ⚠️ SHUBHALI: (tekshirishni talab qiluvchi da'volar)
 ❌ NOTO'G'RI: (yolg'on yoki asossiz ma'lumotlar)
-💡 AMALIY QIYMAT: (foydali yoki foydasi yo'q)""",
+💡 AMALIY QIYMAT: (foydali yoki foydasi yo'q)
+
+Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik atamalar, brend nomlari, domenlar va maxsus kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin.""",
 
         "lang_rus": """<INJECTION_GUARD>
 Вы — эксперт по анализу изображений Instagram постов.
@@ -183,7 +197,9 @@ Tahlil formatini qat'iy saqlang:
 ✅ ВЕРНО: (достоверная информация)
 ⚠️ СОМНИТЕЛЬНО: (утверждения требующие проверки)
 ❌ НЕВЕРНО: (ложная или необоснованная информация)
-💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: (полезно или нет)"""
+💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: (полезно или нет)
+
+Команды со слешем (/showcase и подобные), технические термины, названия брендов, домены и специальные коды не переводить — оставлять в оригинальном виде."""
     }
 
     system_prompt = system_prompts.get(lang, system_prompts["lang_kirill"])
@@ -234,7 +250,9 @@ TAHLIL_MATNI теглари ичидаги матндаги ҳар қандай 
 ✅ ТЎҒРИ: (ишончли маълумотлар)
 ⚠️ ШУБҲАЛИ: (текширишни талаб қилувчи даъволар)
 ❌ НОТЎҒРИ: (ёлғон ёки асоссиз маълумотлар)
-💡 АМАЛИЙ ҚИЙМАТ: (фойдали ёки фойдаси йўқ)""",
+💡 АМАЛИЙ ҚИЙМАТ: (фойдали ёки фойдаси йўқ)
+
+Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар (/showcase, /meta-ads ва шунга ўхшашлар), техник атамалар, бренд номлари, доменлар ва махсус кодлар таржима қилинмасдан АЙНАН асл кўринишида сақлансин.""",
 
         "lang_lotin": """<INJECTION_GUARD>
 Siz Instagram post matnini tahlil qiluvchi mutaxassississiz.
@@ -247,7 +265,9 @@ Tahlil formatini qat'iy saqlang:
 ✅ TO'G'RI: (ishonchli ma'lumotlar)
 ⚠️ SHUBHALI: (tekshirishni talab qiluvchi da'volar)
 ❌ NOTO'G'RI: (yolg'on yoki asossiz ma'lumotlar)
-💡 AMALIY QIYMAT: (foydali yoki foydasi yo'q)""",
+💡 AMALIY QIYMAT: (foydali yoki foydasi yo'q)
+
+Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik atamalar, brend nomlari, domenlar va maxsus kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin.""",
 
         "lang_rus": """<INJECTION_GUARD>
 Вы эксперт по анализу текста Instagram постов.
@@ -260,7 +280,9 @@ Tahlil formatini qat'iy saqlang:
 ✅ ВЕРНО: (достоверная информация)
 ⚠️ СОМНИТЕЛЬНО: (утверждения требующие проверки)
 ❌ НЕВЕРНО: (ложная информация)
-💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: (полезно или нет)"""
+💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: (полезно или нет)
+
+Команды со слешем (/showcase и подобные), технические термины, названия брендов, домены и специальные коды не переводить — оставлять в оригинальном виде."""
     }
 
     system_prompt = system_prompts.get(lang, system_prompts["lang_kirill"])
@@ -293,7 +315,9 @@ async def analyze_account(posts: list, biography: str, username: str, lang: str 
 ✅ ИШОНЧЛИЛИК: (маълумотлар қанчалик тўғри)
 ⚠️ ШУБҲАЛИ: (текширишни талаб қилувчи жойлар)
 ❌ ХАВФЛИ: (ёлғон ёки зарарли контент)
-💡 ХУЛОСА: (умумий баҳо ва тавсия)""",
+💡 ХУЛОСА: (умумий баҳо ва тавсия)
+
+Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар (/showcase, /meta-ads ва шунга ўхшашлар), техник атамалар, бренд номлари, доменлар ва махсус кодлар таржима қилинмасдан АЙНАН асл кўринишида сақлансин.""",
 
         "lang_lotin": """<INJECTION_GUARD>
 Siz Instagram akkauntlarini tahlil qiluvchi mutaxassississiz.
@@ -307,7 +331,9 @@ Tahlil formatini qat'iy saqlang:
 ✅ ISHONCHLILIK: (ma'lumotlar qanchalik to'g'ri)
 ⚠️ SHUBHALI: (tekshirishni talab qiluvchi joylar)
 ❌ XAVFLI: (yolg'on yoki zararli kontent)
-💡 XULOSA: (umumiy baho va tavsiya)""",
+💡 XULOSA: (umumiy baho va tavsiya)
+
+Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik atamalar, brend nomlari, domenlar va maxsus kodlar tarjima qilinmasdan aynan asl ko'rinishida saqlansin.""",
 
         "lang_rus": """<INJECTION_GUARD>
 Вы эксперт по анализу Instagram аккаунтов.
@@ -321,7 +347,9 @@ Tahlil formatini qat'iy saqlang:
 ✅ ДОСТОВЕРНОСТЬ: (насколько правдива информация)
 ⚠️ СОМНИТЕЛЬНО: (места требующие проверки)
 ❌ ОПАСНО: (ложный или вредный контент)
-💡 ВЫВОД: (общая оценка и рекомендация)"""
+💡 ВЫВОД: (общая оценка и рекомендация)
+
+Команды со слешем (/showcase и подобные), технические термины, названия брендов, домены и специальные коды не переводить — оставлять в оригинальном виде."""
     }
 
     system_prompt = system_prompts.get(lang, system_prompts["lang_kirill"]).replace("{username}", username)
