@@ -3,9 +3,10 @@ import os
 import logging
 from datetime import datetime, timezone
 
-DB_PATH = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "stats.db")
-)
+_DATA_DIR = os.environ.get("STATS_DB_DIR",
+    os.path.join(os.path.dirname(__file__), "..", ".."))
+os.makedirs(_DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(_DATA_DIR, "stats.db")
 
 SOURCE_TYPES = ("instagram_reels", "instagram_post", "instagram_account", "youtube_shorts", "voice")
 LANGUAGES = ("lang_kirill", "lang_lotin", "lang_rus")
