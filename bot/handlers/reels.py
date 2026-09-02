@@ -779,13 +779,35 @@ async def handle_reel(message: Message):
         else:
             await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
 
-        analysis = await loop.run_in_executor(None, analyze_content, text, lang)
+        try:
+            analysis = await loop.run_in_executor(None, analyze_content, text, lang)
+            refused = is_moderation_refusal(analysis)
+        except BadRequestError as e:
+            err_msg = str(e).lower()
+            err_code = str(getattr(e, "code", "") or "").lower()
+            if "content_filter" not in err_msg and "content_filter" not in err_code and "moderation" not in err_msg:
+                raise
+            analysis = None
+            refused = True
 
-        if is_moderation_refusal(analysis):
-            logging.warning(f"Moderatsiya rad etishi (handle_reel): user_id={message.from_user.id} url={url}")
-            stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "moderation", "refusal-heuristic")
-            await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
-            return
+        if refused:
+            logging.warning(
+                f"GPT-4o moderatsiya rad etishi (handle_reel): user_id={message.from_user.id} "
+                f"url={url}, gpt-4o-mini fallback urinilmoqda"
+            )
+            try:
+                analysis = await loop.run_in_executor(None, analyze_content, text, lang, "gpt-4o-mini")
+                fallback_refused = is_moderation_refusal(analysis)
+            except BadRequestError:
+                fallback_refused = True
+
+            if fallback_refused:
+                logging.warning(f"gpt-4o-mini fallback ham rad etdi (handle_reel): user_id={message.from_user.id} url={url}")
+                stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "moderation", "refusal-heuristic+fallback")
+                await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
+                return
+            else:
+                logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_reel): user_id={message.from_user.id} url={url}")
 
         result_text = (
             f"🔍 <b>Таҳлил натижаси:</b>\n\n"

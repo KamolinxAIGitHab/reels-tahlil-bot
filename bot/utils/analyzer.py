@@ -117,15 +117,16 @@ _USER_PROMPTS = {
     ),
 }
 
-def analyze_content(text: str, lang: str = "lang_kirill") -> str:
+def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o") -> str:
     """Transkripsiya matnini (Reels ovozi yoki ovozli xabar) tanlangan
     tilga tarjima qilib, texnik to'g'rilik/amaliy qiymat bo'yicha
-    tahlil qiladi. Sinxron — chaqiruvchi run_in_executor bilan o'rashi kerak."""
+    tahlil qiladi. Sinxron — chaqiruvchi run_in_executor bilan o'rashi kerak.
+    `model` moderatsiya rad etganda gpt-4o-mini fallback uchun almashtiriladi."""
     system_prompt = _SYSTEM_PROMPTS.get(lang, _SYSTEM_PROMPTS["lang_kirill"])
     user_prompt = _USER_PROMPTS.get(lang, _USER_PROMPTS["lang_kirill"]).format(text=text)
 
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_prompt},
