@@ -383,7 +383,7 @@ async def download_account_posts(username: str) -> list:
         # bu yerda qo'lda backoff bilan qayta urinamiz.
         profile = None
         last_exc = None
-        for delay in (0, 5, 15):
+        for delay in (0, 30, 90):
             if delay:
                 time.sleep(delay)
             try:
