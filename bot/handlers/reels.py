@@ -13,7 +13,7 @@ from openai import RateLimitError, AuthenticationError, BadRequestError
 from bot.utils.downloader import (
     download_reels_audio, download_instagram_image, download_account_posts,
     download_youtube_shorts, VideoTooLongError, AudioExtractionFailedError,
-    CookieExpiredError,
+    CookieExpiredError, PrivateContentError,
 )
 from bot.utils import stats
 from bot.utils.stt import transcribe_audio, UnclearAudioError
@@ -77,6 +77,21 @@ MODERATION_MESSAGES = {
     "lang_rus": (
         "⚠️ Контент не был проанализирован. Содержание не "
         "соответствует условиям сервиса."
+    ),
+}
+
+PRIVATE_CONTENT_MESSAGES = {
+    "lang_kirill": (
+        "🔒 Бу контент хусусий — кириш чекланган.\n"
+        "Фақат оммавий контентни таҳлил қила оламиз."
+    ),
+    "lang_lotin": (
+        "🔒 Bu kontent xususiy — kirish cheklangan.\n"
+        "Faqat ommaviy kontentni tahlil qila olamiz."
+    ),
+    "lang_rus": (
+        "🔒 Этот контент приватный — доступ ограничен.\n"
+        "Мы можем анализировать только публичный контент."
     ),
 }
 
@@ -356,7 +371,8 @@ async def cmd_stats(message: Message):
             f"  🇺🇿 Узбекский кириллица: {lng['lang_kirill']}\n"
             f"  🔤 Узбекский латиница: {lng['lang_lotin']}\n"
             f"  🇷🇺 Русский: {lng['lang_rus']}\n\n"
-            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta"
+            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta\n"
+            f"🔄 Cookie fallback: {s['cookie_fallback_count']} ta"
             f"{hourly_text}"
         )
     elif lang == "lang_lotin":
@@ -382,7 +398,8 @@ async def cmd_stats(message: Message):
             f"  🇺🇿 O'zbek kirill: {lng['lang_kirill']}\n"
             f"  🔤 O'zbek lotin: {lng['lang_lotin']}\n"
             f"  🇷🇺 Rus: {lng['lang_rus']}\n\n"
-            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta"
+            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta\n"
+            f"🔄 Cookie fallback: {s['cookie_fallback_count']} ta"
             f"{hourly_text}"
         )
     else:
@@ -408,7 +425,8 @@ async def cmd_stats(message: Message):
             f"  🇺🇿 Ўзбек кирилл: {lng['lang_kirill']}\n"
             f"  🔤 Ўзбек лотин: {lng['lang_lotin']}\n"
             f"  🇷🇺 Рус: {lng['lang_rus']}\n\n"
-            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta"
+            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta\n"
+            f"🔄 Cookie fallback: {s['cookie_fallback_count']} ta"
             f"{hourly_text}"
         )
     await message.answer(text)
@@ -556,7 +574,10 @@ async def handle_post(message: Message):
             return
         logging.error(f"Post tahlili xatosi: user_id={message.from_user.id} url={url} error={e}")
         err = str(e).lower()
-        if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
+        if any(k in err for k in ("private", "restricted video", "not available")):
+            stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "private_content", str(e))
+            await status_msg.edit_text(PRIVATE_CONTENT_MESSAGES.get(lang, PRIVATE_CONTENT_MESSAGES["lang_kirill"]))
+        elif any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
             stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "instagram_limit", str(e))
             if lang == "lang_rus":
                 await status_msg.edit_text("⏳ Instagram временно ограничил запросы. Повторите через 10-15 минут.")
@@ -765,7 +786,7 @@ async def handle_reel(message: Message):
         else:
             await status_msg.edit_text("⬇️ Видео юкланяпти...")
 
-        file_path, reel_caption = await download_reels_audio(url)
+        file_path, reel_caption, used_cookie_fallback = await download_reels_audio(url)
         tmp_dir = os.path.dirname(file_path)
 
         if lang == "lang_rus":
@@ -860,7 +881,11 @@ async def handle_reel(message: Message):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
-        stats.log_analysis(message.from_user.id, "instagram_reels", lang, "success", fallback_used=1 if fallback_used else 0)
+        stats.log_analysis(
+            message.from_user.id, "instagram_reels", lang, "success",
+            error_type="cookie_fallback" if used_cookie_fallback else None,
+            fallback_used=1 if fallback_used else 0,
+        )
 
     except asyncio.TimeoutError:
         stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "download_error", "timeout")
@@ -870,6 +895,9 @@ async def handle_reel(message: Message):
             await status_msg.edit_text("⏳ Instagram javob berishda kechikmoqda. Keyinroq urinib ko'ring.")
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
+    except PrivateContentError:
+        stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "private_content", "xususiy kontent")
+        await status_msg.edit_text(PRIVATE_CONTENT_MESSAGES.get(lang, PRIVATE_CONTENT_MESSAGES["lang_kirill"]))
     except CookieExpiredError:
         await notify_cookie_expired(message, lang, "instagram_reels")
         await status_msg.edit_text(COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"]))
@@ -1048,13 +1076,18 @@ async def handle_youtube(message: Message):
         if await handle_openai_error(status_msg, lang, e, "handle_youtube", message.from_user.id, "youtube_shorts"):
             return
         logging.error(f"YouTube tahlili xatosi: user_id={message.from_user.id} url={url} error={e}")
-        stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "error", "other", str(e))
-        if lang == "lang_rus":
-            await status_msg.edit_text("❌ Произошла ошибка. Попробуйте другую ссылку.")
-        elif lang == "lang_lotin":
-            await status_msg.edit_text("❌ Xatolik yuz berdi. Iltimos, boshqa havola yuboring.")
+        err = str(e).lower()
+        if any(k in err for k in ("private video", "this is a private", "sign in if you")):
+            stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "error", "private_content", str(e))
+            await status_msg.edit_text(PRIVATE_CONTENT_MESSAGES.get(lang, PRIVATE_CONTENT_MESSAGES["lang_kirill"]))
         else:
-            await status_msg.edit_text("❌ Хато юз берди. Илтимос, бошқа ҳавола юборинг.")
+            stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "error", "other", str(e))
+            if lang == "lang_rus":
+                await status_msg.edit_text("❌ Произошла ошибка. Попробуйте другую ссылку.")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("❌ Xatolik yuz berdi. Iltimos, boshqa havola yuboring.")
+            else:
+                await status_msg.edit_text("❌ Хато юз берди. Илтимос, бошқа ҳавола юборинг.")
     finally:
         if tmp_dir and os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir, ignore_errors=True)

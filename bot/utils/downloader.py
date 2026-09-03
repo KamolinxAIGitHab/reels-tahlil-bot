@@ -23,6 +23,12 @@ class CookieExpiredError(Exception):
     bildiradi (qarang: COOKIE_YANGILASH.md)."""
 
 
+class PrivateContentError(Exception):
+    """Instagram kontenti xususiy (private) profildan bo'lgani va unga
+    kirish cheklangani sababli cookie'siz ham, cookie bilan ham
+    yuklanmaganda ko'tariladi."""
+
+
 def _is_cookie_expired(e: Exception) -> bool:
     """Berilgan xato Instagram cookie eskirganini (LoginRequired yoki
     401) bildiradimi, shuni tekshiradi."""
@@ -30,6 +36,13 @@ def _is_cookie_expired(e: Exception) -> bool:
         return True
     msg = str(e).lower()
     return "401" in msg or "login required" in msg or "please log in" in msg
+
+
+def _is_private_content(e: Exception) -> bool:
+    """Berilgan xato Instagram kontenti xususiy (private) profildan
+    ekanini bildiradimi, shuni tekshiradi."""
+    msg = str(e).lower()
+    return any(k in msg for k in ("private", "restricted video", "not available"))
 
 def _resolve_cookies_file() -> str | None:
     # 1. INSTAGRAM_COOKIES env var — base64 decode qilib /tmp ga yoz
@@ -51,7 +64,7 @@ def _resolve_cookies_file() -> str | None:
 
 _COOKIES_FILE = _resolve_cookies_file()
 
-def _build_ydl_opts(tmp_dir: str) -> dict:
+def _build_ydl_opts(tmp_dir: str, use_cookies: bool = True) -> dict:
     opts = {
         "outtmpl": os.path.join(tmp_dir, "%(id)s.%(ext)s"),
         "format": "mp4/bestvideo+bestaudio/best",
@@ -59,6 +72,8 @@ def _build_ydl_opts(tmp_dir: str) -> dict:
         "no_warnings": True,
         "merge_output_format": "mp4",
     }
+    if not use_cookies:
+        return opts
     if _COOKIES_FILE:
         opts["cookiefile"] = _COOKIES_FILE
     elif INSTAGRAM_USER and INSTAGRAM_PASS:
@@ -117,9 +132,12 @@ def _new_instaloader(**extra_opts) -> "instaloader.Instaloader":
 async def download_reels_audio(url: str):
     """Instagram Reels videosini yt-dlp orqali yuklaydi, undan ffmpeg bilan
     audio yo'lakchasini ajratib oladi (Whisper API'ning 25MB chegarasidan
-    oshib ketmaslik uchun) va (audio_path, caption) qaytaradi. Caption
-    instaloader orqali alohida, best-effort tarzda olinadi — topilmasa
-    yoki timeout bo'lsa, bo'sh satr qaytariladi."""
+    oshib ketmaslik uchun) va (audio_path, caption, used_cookie_fallback)
+    qaytaradi. Avval cookie'siz, muvaffaqiyatsiz bo'lsa cookie bilan
+    urinib ko'riladi — used_cookie_fallback ikkinchi urinish
+    ishlatilganini bildiradi. Caption instaloader orqali alohida,
+    best-effort tarzda olinadi — topilmasa yoki timeout bo'lsa, bo'sh
+    satr qaytariladi."""
     import re
 
     output_dir = "downloads"
@@ -141,13 +159,25 @@ async def download_reels_audio(url: str):
             return ""
 
     def _download():
+        # 1-urinish: cookie'siz (ko'plab ochiq/public Reels cookie'siz ham
+        # yuklanadi — cookie ba'zan noto'g'ri/eskirgan bo'lsa, aksincha
+        # so'rovni buzib qo'yishi mumkin). Muvaffaqiyatsiz bo'lsa, faqat
+        # shunda cookie bilan qayta urinamiz.
+        used_cookie_fallback = False
         try:
-            with yt_dlp.YoutubeDL(_build_ydl_opts(tmp_dir)) as ydl:
+            with yt_dlp.YoutubeDL(_build_ydl_opts(tmp_dir, use_cookies=False)) as ydl:
                 ydl.download([url])
-        except Exception as e:
-            if _is_cookie_expired(e):
-                raise CookieExpiredError("Instagram cookie eskirgan (video yuklashda)") from e
-            raise
+        except Exception:
+            used_cookie_fallback = True
+            try:
+                with yt_dlp.YoutubeDL(_build_ydl_opts(tmp_dir, use_cookies=True)) as ydl:
+                    ydl.download([url])
+            except Exception as e:
+                if _is_cookie_expired(e):
+                    raise CookieExpiredError("Instagram cookie eskirgan (video yuklashda)") from e
+                if _is_private_content(e):
+                    raise PrivateContentError("Instagram kontenti xususiy (private)") from e
+                raise
 
         video_path = None
         for f in os.listdir(tmp_dir):
@@ -171,15 +201,15 @@ async def download_reels_audio(url: str):
         if not os.path.exists(audio_path):
             raise FileNotFoundError("Audio ajratib olinmadi!")
 
-        return audio_path
+        return audio_path, used_cookie_fallback
 
-    audio_path = await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=90)
+    audio_path, used_cookie_fallback = await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=90)
     try:
         caption = await asyncio.wait_for(loop.run_in_executor(None, _get_caption), timeout=20)
     except asyncio.TimeoutError:
         caption = ""
 
-    return audio_path, caption
+    return audio_path, caption, used_cookie_fallback
 
 
 class VideoTooLongError(Exception):

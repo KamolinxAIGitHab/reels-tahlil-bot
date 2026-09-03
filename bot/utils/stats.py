@@ -126,6 +126,11 @@ def get_stats() -> dict:
         by_source = {st: count(" WHERE source_type = ?", (st,)) for st in SOURCE_TYPES}
         by_lang = {lang: count(" WHERE language = ?", (lang,)) for lang in LANGUAGES}
         fallback_used_count = count(" WHERE fallback_used = 1")
+        # cookie'siz urinish muvaffaqiyatsiz bo'lib, cookie bilan
+        # muvaffaqiyatli bo'lgan hollar — log_analysis()ga error_type=
+        # 'cookie_fallback' bilan yoziladi (status='success' saqlanadi,
+        # shuning uchun today_error statistikasi buzilmaydi).
+        cookie_fallback_count = count(" WHERE error_type = 'cookie_fallback'")
 
         cur.execute(
             "SELECT strftime('%H', timestamp, '+5 hours') as hour, COUNT(*) as count "
@@ -146,6 +151,7 @@ def get_stats() -> dict:
             "by_source": by_source,
             "by_lang": by_lang,
             "fallback_used_count": fallback_used_count,
+            "cookie_fallback_count": cookie_fallback_count,
             "hourly": hourly,
         }
     finally:

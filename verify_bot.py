@@ -28,8 +28,8 @@ def test_downloader_mock():
          patch('bot.utils.downloader._new_instaloader', side_effect=Exception("no network in test")):
         url = "https://www.instagram.com/reel/C-xyz/"
         try:
-            path, caption = asyncio.run(download_reels_audio(url))
-            print(f"Downloader test passed: {path} (caption={caption!r})")
+            path, caption, used_cookie_fallback = asyncio.run(download_reels_audio(url))
+            print(f"Downloader test passed: {path} (caption={caption!r}, cookie_fallback={used_cookie_fallback})")
             shutil.rmtree(os.path.dirname(path), ignore_errors=True)
         except Exception as e:
             print(f"Downloader test failed: {e}")
