@@ -270,7 +270,7 @@ async def cmd_help(message: Message):
             "• Проверит факты\n"
             "• Даст оценку контента\n"
             "• Отправьте голосовое — бот проанализирует\n"
-            "• Анализ аккаунтов временно недоступен\n\n"
+            "• 🔴 Анализ аккаунтов временно недоступен\n\n"
             "⚙️ Команды:\n"
             "/start — начать заново\n"
             "/help — эта справка"
@@ -288,7 +288,7 @@ async def cmd_help(message: Message):
             "• Faktlarni tekshiradi\n"
             "• Kontent bahosini beradi\n"
             "• Ovozli xabar yuboring — bot tahlil qiladi\n"
-            "• Akkount tahlili vaqtincha ishlamaydi\n\n"
+            "• 🔴 Akkount tahlili vaqtincha ishlamaydi\n\n"
             "⚙️ Buyruqlar:\n"
             "/start — qaytadan boshlash\n"
             "/help — ushbu yordam"
@@ -306,7 +306,7 @@ async def cmd_help(message: Message):
             "• Фактларни текширади\n"
             "• Контент баҳосини беради\n"
             "• Овозли хабар юборинг — бот таҳлил қилади\n"
-            "• Аккаунт таҳлили вақтинча ишламайди\n\n"
+            "• 🔴 Аккаунт таҳлили вақтинча ишламайди\n\n"
             "⚙️ Буйруқлар:\n"
             "/start — қайтадан бошлаш\n"
             "/help — ушбу ёрдам"
@@ -463,7 +463,7 @@ async def handle_account(message: Message):
 
     if lang == "lang_rus":
         await message.answer(
-            "⏸ Анализ аккаунта Instagram временно недоступен.\n"
+            "🔴 Анализ аккаунта Instagram временно недоступен.\n"
             "Вы можете использовать другие функции:\n"
             "🎬 Instagram Reels\n"
             "📸 Instagram пост\n"
@@ -472,7 +472,7 @@ async def handle_account(message: Message):
         )
     elif lang == "lang_lotin":
         await message.answer(
-            "⏸ Instagram akkaunt tahlili vaqtincha ishlamaydi.\n"
+            "🔴 Instagram akkaunt tahlili vaqtincha ishlamaydi.\n"
             "Boshqa xizmatlardan foydalanishingiz mumkin:\n"
             "🎬 Instagram Reels\n"
             "📸 Instagram post\n"
@@ -481,7 +481,7 @@ async def handle_account(message: Message):
         )
     else:
         await message.answer(
-            "⏸ Instagram аккаунт таҳлили вақтинча ишламайди.\n"
+            "🔴 Instagram аккаунт таҳлили вақтинча ишламайди.\n"
             "Бошқа хизматлардан фойдаланишингиз мумкин:\n"
             "🎬 Instagram Reels\n"
             "📸 Instagram пост\n"
