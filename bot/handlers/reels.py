@@ -463,8 +463,7 @@ async def handle_account(message: Message):
 
     if lang == "lang_rus":
         await message.answer(
-            "⏸ Анализ аккаунта Instagram временно приостановлен.\n"
-            "Instagram установил временное ограничение.\n"
+            "⏸ Анализ аккаунта Instagram временно недоступен.\n"
             "Вы можете использовать другие функции:\n"
             "🎬 Instagram Reels\n"
             "📸 Instagram пост\n"
@@ -473,8 +472,7 @@ async def handle_account(message: Message):
         )
     elif lang == "lang_lotin":
         await message.answer(
-            "⏸ Instagram akkaunt tahlili vaqtincha to'xtatildi.\n"
-            "Instagram tomonidan vaqtinchalik cheklov qo'yilgan.\n"
+            "⏸ Instagram akkaunt tahlili vaqtincha ishlamaydi.\n"
             "Boshqa xizmatlardan foydalanishingiz mumkin:\n"
             "🎬 Instagram Reels\n"
             "📸 Instagram post\n"
@@ -483,8 +481,7 @@ async def handle_account(message: Message):
         )
     else:
         await message.answer(
-            "⏸ Instagram аккаунт таҳлили вақтинча тўхтатилди.\n"
-            "Instagram томонидан вақтинчалик чеклов қўйилган.\n"
+            "⏸ Instagram аккаунт таҳлили вақтинча ишламайди.\n"
             "Бошқа хизматлардан фойдаланишингиз мумкин:\n"
             "🎬 Instagram Reels\n"
             "📸 Instagram пост\n"
