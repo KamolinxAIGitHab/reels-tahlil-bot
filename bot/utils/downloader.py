@@ -359,7 +359,7 @@ async def download_instagram_image(url: str):
 
 async def download_account_posts(username: str) -> list:
     """
-    Instagram akkountidan ohirgi 6 postni yuklaydi.
+    Instagram akkountidan ohirgi 3 postni yuklaydi.
     Har post uchun caption, typename, likes, comments, date, url qaytaradi.
     """
     import itertools
@@ -402,7 +402,7 @@ async def download_account_posts(username: str) -> list:
         posts = []
 
         try:
-            for post in itertools.islice(profile.get_posts(), 6):
+            for post in itertools.islice(profile.get_posts(), 3):
                 posts.append({
                     "caption": post.caption or "",
                     "typename": post.typename,
