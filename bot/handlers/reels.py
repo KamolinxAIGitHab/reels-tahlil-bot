@@ -455,95 +455,30 @@ async def set_language(callback: CallbackQuery):
 
 @router.message(F.text.func(lambda text: extract_account_url(text) is not None and extract_post_url(text) is None and extract_reel_url(text) is None))
 async def handle_account(message: Message):
-    text = message.text or ""
-    username = extract_account_url(text)
     lang = user_language.get(message.from_user.id, "lang_kirill")
 
+    # Instagram web_profile_info va mobil usernameinfo endpoint'lari doimiy
+    # 429/fail qaytarmoqda (2026-09), shuning uchun funksiya vaqtincha
+    # o'chirilgan — foydalanuvchilarga uzoq kutish o'rniga darhol tushunarli
+    # xabar ko'rsatiladi. download_account_posts/analyze_account import'lari
+    # qayta yoqish oson bo'lishi uchun saqlab qolingan.
+    stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "instagram_limit", "akkount tahlili vaqtincha o'chirilgan")
+
     if lang == "lang_rus":
-        status_msg = await message.answer("⏳ Анализируется аккаунт...")
+        await message.answer(
+            "⚠️ Анализ Instagram-аккаунтов временно недоступен из-за ограничений Instagram.\n"
+            "Пожалуйста, отправьте ссылку на Reels, пост или YouTube Shorts."
+        )
     elif lang == "lang_lotin":
-        status_msg = await message.answer("⏳ Akkount tahlil qilinmoqda...")
+        await message.answer(
+            "⚠️ Instagram akkount tahlili Instagram cheklovlari tufayli vaqtincha ishlamayapti.\n"
+            "Iltimos, Reels, post yoki YouTube Shorts havolasini yuboring."
+        )
     else:
-        status_msg = await message.answer("⏳ Аккаунт таҳлил қилиняпти...")
-
-    try:
-        if lang == "lang_rus":
-            await status_msg.edit_text("⬇️ Посты загружаются...")
-        elif lang == "lang_lotin":
-            await status_msg.edit_text("⬇️ Postlar yuklanmoqda...")
-        else:
-            await status_msg.edit_text("⬇️ Постлар юкланяпти...")
-
-        posts, biography = await download_account_posts(username)
-
-        if not posts:
-            stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "download_error", "posts bo'sh")
-            if lang == "lang_rus":
-                await status_msg.edit_text("❌ Аккаунт не найден или нет постов.")
-            elif lang == "lang_lotin":
-                await status_msg.edit_text("❌ Akkount topilmadi yoki postlar yo'q.")
-            else:
-                await status_msg.edit_text("❌ Аккаунт топилмади ёки постлар йўқ.")
-            return
-
-        if lang == "lang_rus":
-            await status_msg.edit_text("🔍 Контент анализируется...")
-        elif lang == "lang_lotin":
-            await status_msg.edit_text("🔍 Kontent tahlil qilinmoqda...")
-        else:
-            await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
-
-        result = await analyze_account(posts, biography, username, lang)
-
-        if is_moderation_refusal(result):
-            logging.warning(f"Moderatsiya rad etishi (handle_account): user_id={message.from_user.id} username={username}")
-            stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "moderation", "refusal-heuristic")
-            await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
-            return
-
-        result_text = f"👤 <b>@{username} аккаунт таҳлили:</b>\n\n{html.escape(result)}"
-
-        if len(result_text) > 4000:
-            await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
-            await message.answer(result_text[4000:], parse_mode="HTML")
-        else:
-            await status_msg.edit_text(result_text, parse_mode="HTML")
-
-        stats.log_analysis(message.from_user.id, "instagram_account", lang, "success")
-
-    except asyncio.TimeoutError:
-        logging.warning(f"Akkount tahlili timeout: user_id={message.from_user.id} username={username}")
-        stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "download_error", "timeout")
-        if lang == "lang_rus":
-            await status_msg.edit_text("⏳ Instagram слишком долго не отвечает. Попробуйте позже.")
-        elif lang == "lang_lotin":
-            await status_msg.edit_text("⏳ Instagram javob berishda kechikmoqda. Keyinroq urinib ko'ring.")
-        else:
-            await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
-    except CookieExpiredError:
-        await notify_cookie_expired(message, lang, "instagram_account")
-        await status_msg.edit_text(COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"]))
-    except Exception as e:
-        if await handle_openai_error(status_msg, lang, e, "handle_account", message.from_user.id, "instagram_account"):
-            return
-        logging.error(f"Akkount tahlili xatosi: user_id={message.from_user.id} username={username} error={e}")
-        err = str(e).lower()
-        if any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
-            stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "instagram_limit", str(e))
-            if lang == "lang_rus":
-                await status_msg.edit_text("⏳ Instagram временно ограничил запросы. Повторите через 10-15 минут.")
-            elif lang == "lang_lotin":
-                await status_msg.edit_text("⏳ Instagram vaqtinchalik cheklov qo'ydi. 10-15 daqiqadan so'ng qayta urining.")
-            else:
-                await status_msg.edit_text("⏳ Instagram вақтинчалик чеклов қўйди. 10-15 дақиқадан сўнг қайта уриниб кўринг.")
-        else:
-            stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "other", str(e))
-            if lang == "lang_rus":
-                await status_msg.edit_text("❌ Произошла ошибка. Аккаунт закрытый или не существует.")
-            elif lang == "lang_lotin":
-                await status_msg.edit_text("❌ Xatolik yuz berdi. Akkount yopiq yoki mavjud emas.")
-            else:
-                await status_msg.edit_text("❌ Хато юз берди. Аккаунт ёпиқ ёки мавжуд эмас.")
+        await message.answer(
+            "⚠️ Instagram аккаунт таҳлили Instagram чекловлари туфайли вақтинча ишламаяпти.\n"
+            "Илтимос, Reels, пост ёки YouTube Shorts ҳаволасини юборинг."
+        )
 
 @router.message(F.text.func(lambda text: extract_post_url(text) is not None))
 async def handle_post(message: Message):
