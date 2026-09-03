@@ -419,9 +419,36 @@ async def set_language(callback: CallbackQuery):
     user_language[callback.from_user.id] = lang
 
     confirmations = {
-        "lang_kirill": "✅ Тил танланди: Ўзбекча (Кирилл)\nИнди Instagram Reels ҳаволасини юборинг.",
-        "lang_lotin":  "✅ Til tanlandi: O'zbekcha (Lotin)\nEndi Instagram Reels havolasini yuboring.",
-        "lang_rus":    "✅ Язык выбран: Русский\nТеперь отправьте ссылку на Instagram Reels.",
+        "lang_kirill": (
+            "✅ Тил танланди: Ўзбекча (Кирилл)\n"
+            "Қуйидагиларни юборишингиз мумкин:\n"
+            "🎬 Instagram Reels ҳаволаси\n"
+            "📸 Instagram пост ҳаволаси\n"
+            "👤 Instagram аккаунт ҳаволаси\n"
+            "🎥 YouTube Shorts ҳаволаси\n"
+            "🎤 Овозли хабар\n"
+            "/help — батафсил кўрсатма"
+        ),
+        "lang_lotin": (
+            "✅ Til tanlandi: O'zbekcha (Lotin)\n"
+            "Quyidagilarni yuborishingiz mumkin:\n"
+            "🎬 Instagram Reels havolasi\n"
+            "📸 Instagram post havolasi\n"
+            "👤 Instagram akkaunt havolasi\n"
+            "🎥 YouTube Shorts havolasi\n"
+            "🎤 Ovozli xabar\n"
+            "/help — batafsil ko'rsatma"
+        ),
+        "lang_rus": (
+            "✅ Язык выбран: Русский\n"
+            "Вы можете отправить:\n"
+            "🎬 Ссылку на Instagram Reels\n"
+            "📸 Ссылку на Instagram пост\n"
+            "👤 Ссылку на Instagram аккаунт\n"
+            "🎥 Ссылку на YouTube Shorts\n"
+            "🎤 Голосовое сообщение\n"
+            "/help — подробная инструкция"
+        ),
     }
     await callback.message.edit_text(confirmations[lang])
     await callback.answer()
