@@ -394,7 +394,10 @@ async def download_account_posts(username: str) -> list:
                     raise CookieExpiredError("Instagram cookie eskirgan (profil o'qishda)") from e
                 last_exc = e
                 msg = str(e).lower()
-                if not any(k in msg for k in ("429", "too many", "wait a few minutes")):
+                if not any(k in msg for k in (
+                    "429", "too many", "wait a few minutes",
+                    "read timed out", "connection"
+                )):
                     raise
         if profile is None:
             raise last_exc
@@ -419,4 +422,4 @@ async def download_account_posts(username: str) -> list:
 
         return posts, profile.biography or ""
 
-    return await asyncio.wait_for(loop.run_in_executor(None, _fetch), timeout=90)
+    return await asyncio.wait_for(loop.run_in_executor(None, _fetch), timeout=300)
