@@ -1,48 +1,42 @@
-# Instagram Cookie'ni yangilash
+# Instagram Cookie Янгилаш Йўриқномаси
 
-## Босқич 1 — Аккаунтга киринг
+## Қачон янгилаш керак?
+- Бот сизга Telegram да хабар юборганда:
+  "⚠️ Instagram cookie eskirdi!"
+- Instagram Reels таҳлили ишламай қолганда
+- Ҳар 1-2 ойда профилактика учун
 
-- Компьютердаги браузерда (Chrome ёки Edge) instagram.com ни очинг.
-- Ботга улайдиган аккаунтингизга киринг (янги "қурбонлик" аккаунт — асосий каналингиз эмас).
-- Лентангиз (постлар) кўринса — кирилган, тайёр.
+## 1-Босқич — Браузерда кириш
+1. Chrome да instagram.com очинг
+2. reelsbot2026 akkauntiga kiring
+3. Лентангиз кўринса — тайёр
 
-## Босқич 2 — cookie'ни олинг
+## 2-Босқич — Cookie экспорт
+1. Chrome юқори ўнгда пазл белгиси 🧩 босинг
+2. "Get cookies.txt LOCALLY" босинг
+3. Export Format: Netscape
+4. "Export" тугмасини босинг
+5. Файл Downloads папкасига тушади
 
-- Браузерда "Get cookies.txt LOCALLY" кенгайтмаси ўрнатилган бўлсин (бугун ўрнатгансиз).
-- Instagram очиқ турганда, юқори ўнгдаги пазл белгиси → "Get cookies.txt LOCALLY" ни босинг.
-- Export Format: Netscape турсин.
-- "Export" тугмасини босинг — cookies.txt файли юкланади.
-
-## Босқич 3 — Файлни жойлаштиринг
-
-- Юкланган файлни `D:\Projects\ReelsTahlilBot\` папкасига кўчиринг.
-- Номини аниқ `cookies.txt` қилинг.
-
-## Босқич 4 — Тоза base64 ясанг
-
-Энг муҳим қадам — certutil эмас, PowerShell ишлатинг (акс ҳолда бузуқ бўлади, буни бугун кўрдик).
-
-- Бот папкасида PowerShell очинг (папка манзил йўлагига powershell ёзиб Enter).
-- Шу буйруқни ёзинг:
-
+## 3-Босқич — Файлни кўчириш
+PowerShell да:
 ```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("cookies.txt")) | Set-Clipboard
+copy "C:\Users\LEGiON\Downloads\www.instagram.com_cookies (N).txt" D:\Projects\ReelsTahlilBot\cookies.txt
 ```
+(N — энг катта рақамли файлни танланг)
 
-Бу — тоза, битта қаторли base64'ни нусхалаш хотирасига (clipboard) қўяди. Экранга ҳеч нима чиқмайди — бу нормал.
+## 4-Босқич — Railway га юклаш
+PowerShell да кетма-кет бажаринг:
+```powershell
+cd D:\Projects\ReelsTahlilBot
+$cookie = [Convert]::ToBase64String([IO.File]::ReadAllBytes("D:\Projects\ReelsTahlilBot\cookies.txt"))
+railway variable set INSTAGRAM_COOKIES="$cookie" --skip-deploys
+railway redeploy
+```
+"y" bosing → Enter
 
-## Босқич 5 — Railway'га қўйинг
+## 5-Босқич — Текшириш
+2 дақиқа кутинг, кейин ботга юборинг:
 
-- Railway'да ботингиз (reels-tahlil-bot) саҳифасини очинг.
-- "Variables" бўлимига ўтинг.
-- INSTAGRAM_COOKIES да ⋮ (уч нуқта) → Изменить (Edit).
-- Эски қийматни тўлиқ ўчиринг (устига қўшиш эмас, алмаштириш).
-- Янги base64'ни Ctrl+V билан қўйинг.
-- Сақланг (✓).
-
-## Босқич 6 — Текширинг
-
-- Railway ботни автоматик қайта деплой қилади — 2 дақиқа кутинг.
-- "Развертывания" да янги "Deployment successful" пайдо бўлсин.
-- Telegram'да @ReelsAnalyzerBot га битта Reels ҳаволаси юборинг.
-- Транскрипция ва таҳлил келса — тайёр, cookie ишлади.
+- Telegram'да @ReelsAnalyzerBot'га битта Instagram Reels ҳаволасини юборинг.
+- Транскрипция ва таҳлил натижаси келса — тайёр, cookie муваффақиятли ишлади.
