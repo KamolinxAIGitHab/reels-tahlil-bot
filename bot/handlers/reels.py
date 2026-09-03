@@ -463,18 +463,33 @@ async def handle_account(message: Message):
 
     if lang == "lang_rus":
         await message.answer(
-            "⚠️ Анализ Instagram-аккаунтов временно недоступен из-за ограничений Instagram.\n"
-            "Пожалуйста, отправьте ссылку на Reels, пост или YouTube Shorts."
+            "⏸ Анализ аккаунта Instagram временно приостановлен.\n"
+            "Instagram установил временное ограничение.\n"
+            "Вы можете использовать другие функции:\n"
+            "🎬 Instagram Reels\n"
+            "📸 Instagram пост\n"
+            "🎥 YouTube Shorts\n"
+            "🎤 Голосовое сообщение"
         )
     elif lang == "lang_lotin":
         await message.answer(
-            "⚠️ Instagram akkount tahlili Instagram cheklovlari tufayli vaqtincha ishlamayapti.\n"
-            "Iltimos, Reels, post yoki YouTube Shorts havolasini yuboring."
+            "⏸ Instagram akkaunt tahlili vaqtincha to'xtatildi.\n"
+            "Instagram tomonidan vaqtinchalik cheklov qo'yilgan.\n"
+            "Boshqa xizmatlardan foydalanishingiz mumkin:\n"
+            "🎬 Instagram Reels\n"
+            "📸 Instagram post\n"
+            "🎥 YouTube Shorts\n"
+            "🎤 Ovozli xabar"
         )
     else:
         await message.answer(
-            "⚠️ Instagram аккаунт таҳлили Instagram чекловлари туфайли вақтинча ишламаяпти.\n"
-            "Илтимос, Reels, пост ёки YouTube Shorts ҳаволасини юборинг."
+            "⏸ Instagram аккаунт таҳлили вақтинча тўхтатилди.\n"
+            "Instagram томонидан вақтинчалик чеклов қўйилган.\n"
+            "Бошқа хизматлардан фойдаланишингиз мумкин:\n"
+            "🎬 Instagram Reels\n"
+            "📸 Instagram пост\n"
+            "🎥 YouTube Shorts\n"
+            "🎤 Овозли хабар"
         )
 
 @router.message(F.text.func(lambda text: extract_post_url(text) is not None))
