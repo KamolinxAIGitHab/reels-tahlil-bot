@@ -98,26 +98,29 @@ def get_stats() -> dict:
             cur.execute(f"SELECT COUNT(*) FROM analysis_log{where}", params)
             return cur.fetchone()[0]
 
-        today_total = count(" WHERE date(timestamp) = date('now')")
-        today_success = count(" WHERE date(timestamp) = date('now') AND status = 'success'")
-        today_error = count(" WHERE date(timestamp) = date('now') AND status = 'error'")
+        # Timestamplar UTC da saqlanadi (log_analysis: datetime.now(timezone.utc)).
+        # O'zbekiston doim UTC+5 (DST yo'q), shuning uchun "bugun"/soat hisoblarini
+        # to'g'ri chiqarish uchun barcha taqqoslashlarga +5 soat siljish qo'llanadi.
+        today_total = count(" WHERE date(timestamp, '+5 hours') = date('now', '+5 hours')")
+        today_success = count(" WHERE date(timestamp, '+5 hours') = date('now', '+5 hours') AND status = 'success'")
+        today_error = count(" WHERE date(timestamp, '+5 hours') = date('now', '+5 hours') AND status = 'error'")
 
         today_error_types = {}
         tracked_errors = ("instagram_limit", "openai_credit", "moderation")
         for et in tracked_errors:
             today_error_types[et] = count(
-                " WHERE date(timestamp) = date('now') AND status = 'error' AND error_type = ?",
+                " WHERE date(timestamp, '+5 hours') = date('now', '+5 hours') AND status = 'error' AND error_type = ?",
                 (et,),
             )
         placeholders = ",".join("?" * len(tracked_errors))
         today_error_types["boshqa"] = count(
-            f" WHERE date(timestamp) = date('now') AND status = 'error' "
+            f" WHERE date(timestamp, '+5 hours') = date('now', '+5 hours') AND status = 'error' "
             f"AND (error_type IS NULL OR error_type NOT IN ({placeholders}))",
             tracked_errors,
         )
 
-        week_total = count(" WHERE strftime('%Y-%W', timestamp) = strftime('%Y-%W', 'now')")
-        month_total = count(" WHERE strftime('%Y-%m', timestamp) = strftime('%Y-%m', 'now')")
+        week_total = count(" WHERE strftime('%Y-%W', timestamp, '+5 hours') = strftime('%Y-%W', 'now', '+5 hours')")
+        month_total = count(" WHERE strftime('%Y-%m', timestamp, '+5 hours') = strftime('%Y-%m', 'now', '+5 hours')")
         all_total = count()
 
         by_source = {st: count(" WHERE source_type = ?", (st,)) for st in SOURCE_TYPES}
@@ -125,9 +128,9 @@ def get_stats() -> dict:
         fallback_used_count = count(" WHERE fallback_used = 1")
 
         cur.execute(
-            "SELECT strftime('%H', timestamp) as hour, COUNT(*) as count "
+            "SELECT strftime('%H', timestamp, '+5 hours') as hour, COUNT(*) as count "
             "FROM analysis_log "
-            "WHERE date(timestamp) = date('now', 'localtime') "
+            "WHERE date(timestamp, '+5 hours') = date('now', '+5 hours') "
             "GROUP BY hour ORDER BY hour"
         )
         hourly = {hour: cnt for hour, cnt in cur.fetchall()}
