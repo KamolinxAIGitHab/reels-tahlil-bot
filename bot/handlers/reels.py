@@ -8,11 +8,11 @@ import re
 import shutil
 import subprocess
 import logging
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 from openai import RateLimitError, AuthenticationError, BadRequestError
 from bot.utils.downloader import (
     download_reels_audio, download_instagram_image, download_account_posts,
-    download_youtube_shorts, VideoTooLongError, AudioExtractionFailedError,
+    download_youtube_shorts, get_youtube_subtitles, VideoTooLongError, AudioExtractionFailedError,
     CookieExpiredError, PrivateContentError,
 )
 from bot.utils import stats
@@ -243,6 +243,42 @@ def is_youtube_shorts_path(url: str) -> bool:
     """URL youtube.com/shorts/... shaklidami, shuni tekshiradi (faqat
     log/status xabari uchun — qabul qilish shartiga ta'sir qilmaydi)."""
     return "/shorts/" in urlparse(url).path.lower()
+
+
+def extract_youtube_video_id(url: str) -> str | None:
+    """URL'dan YouTube video ID'sini ajratib oladi — shorts/XXXXX,
+    watch?v=XXXXX yoki youtu.be/XXXXX shakllarining barchasini qo'llab-
+    quvvatlaydi. Ajratib bo'lmasa None qaytaradi."""
+    parsed = urlparse(url)
+    path = parsed.path
+
+    if "/shorts/" in path:
+        return path.split("/shorts/")[1].split("/")[0] or None
+
+    if (parsed.hostname or "").lower() == "youtu.be":
+        return path.lstrip("/").split("/")[0] or None
+
+    if path == "/watch":
+        video_id = parse_qs(parsed.query).get("v", [None])[0]
+        return video_id or None
+
+    return None
+
+
+NO_SUBTITLE_MESSAGES = {
+    "lang_kirill": (
+        "Бу видеода субтитр мавжуд эмас. Видеони юклаб, "
+        "овозли хабар сифатида юборинг — таҳлил қиламиз."
+    ),
+    "lang_lotin": (
+        "Bu videoda subtitr yo'q. Videoni yuklab, "
+        "ovozli xabar sifatida yuboring."
+    ),
+    "lang_rus": (
+        "У этого видео нет субтитров. Скачайте видео и "
+        "отправьте голосовым сообщением."
+    ),
+}
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
@@ -976,6 +1012,35 @@ async def handle_youtube(message: Message):
     loop = asyncio.get_running_loop()
 
     try:
+        # 1-urinish: YouTube Data API orqali subtitr (tezroq, yt-dlp/Whisper'siz)
+        video_id = extract_youtube_video_id(url)
+        subtitle_text = await loop.run_in_executor(None, get_youtube_subtitles, video_id) if video_id else None
+
+        if subtitle_text:
+            if lang == "lang_rus":
+                await status_msg.edit_text("🔍 Контент анализируется...")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("🔍 Mazmun tahlil qilinmoqda...")
+            else:
+                await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
+
+            analysis = await loop.run_in_executor(None, analyze_content, subtitle_text, lang)
+            result_text = (
+                f"🔍 <b>Таҳлил натижаси:</b>\n\n"
+                f"{html.escape(analysis)}"
+            )
+            if len(result_text) > 4000:
+                await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
+                await message.answer(result_text[4000:], parse_mode="HTML")
+            else:
+                await status_msg.edit_text(result_text, parse_mode="HTML")
+
+            stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "success")
+            return
+
+        # Subtitr topilmadi (yoki video_id ajratib bo'lmadi, yoki OAuth2
+        # yo'qligi sababli yuklab bo'lmadi) — foydalanuvchiga xabar bermay,
+        # avvalgi yt-dlp+Whisper pipeline'iga xabarsiz o'tiladi.
         file_path, video_caption = await download_youtube_shorts(url)
         tmp_dir = os.path.dirname(file_path)
 

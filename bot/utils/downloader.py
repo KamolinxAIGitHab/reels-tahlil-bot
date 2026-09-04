@@ -5,8 +5,10 @@ import asyncio
 import base64
 import subprocess
 import http.cookiejar
+import logging
 import instaloader
-from bot.config import settings
+from googleapiclient.discovery import build
+from bot.config import settings, YOUTUBE_API_KEY
 
 INSTAGRAM_USER    = settings.instagram_username
 INSTAGRAM_PASS    = os.getenv("INSTAGRAM_PASSWORD")
@@ -224,6 +226,35 @@ class AudioExtractionFailedError(Exception):
     """YouTube'dan yuklab olingan video/audio yaroqsiz (chala yoki
     buzilgan stream) bo'lib chiqqanda, barcha player_client
     fallback'lari sinab ko'rilgandan keyin ham ko'tariladi."""
+
+
+def get_youtube_subtitles(video_id: str) -> str | None:
+    """YouTube Data API v3 orqali video subtitr mavjudligini tekshiradi.
+
+    ESLATMA: captions.download() endpoint'i Google tomonidan faqat
+    OAuth2 orqali ruxsat etiladi — oddiy API kalit bilan har doim
+    401 "Login Required" xatosi qaytaradi (sinovda tasdiqlangan).
+    Shuning uchun bu funksiya hozircha subtitr matnini yuklab olmaydi
+    va topilgan-topilmaganidan qat'i nazar har doim None qaytaradi —
+    chaqiruvchi tomon bu holatda yt-dlp+Whisper pipeline'iga xabarsiz
+    o'tadi. Kelajakda OAuth2 qo'shilganda captions().download()
+    chaqiruvi shu joyga qaytariladi."""
+    if not YOUTUBE_API_KEY:
+        return None
+
+    try:
+        youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+        response = youtube.captions().list(part="snippet", videoId=video_id).execute()
+        items = response.get("items", [])
+        if items:
+            logging.info(
+                f"YouTube subtitr mavjud (video_id={video_id}), lekin OAuth2 "
+                f"yo'qligi sababli yuklab olinmaydi — yt-dlp'ga o'tiladi"
+            )
+        return None
+    except Exception as e:
+        logging.error(f"YouTube subtitr tekshirishda xato (video_id={video_id}): {e}")
+        return None
 
 
 # YouTube'ning "Sign in to confirm you're not a bot" tekshiruvini
