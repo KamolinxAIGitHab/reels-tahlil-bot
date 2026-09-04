@@ -101,6 +101,12 @@ YOUTUBE_STATUS_MESSAGES = {
     "lang_rus": "🎬 YouTube Shorts анализируется...",
 }
 
+YOUTUBE_DISABLED_MESSAGES = {
+    "lang_kirill": "🔴 YouTube Shorts таҳлили вақтинча ишламайди. Тез орада тикланади.",
+    "lang_lotin": "🔴 YouTube Shorts tahlili vaqtincha ishlamaydi. Tez orada tiklanadi.",
+    "lang_rus": "🔴 Анализ YouTube Shorts временно недоступен. Скоро восстановим.",
+}
+
 YOUTUBE_TOO_LONG_MESSAGES = {
     "lang_kirill": (
         "⚠️ Фақат YouTube Shorts (60 сек) қабул қилинади. "
@@ -320,7 +326,8 @@ async def cmd_help(message: Message):
             "• Проверит факты\n"
             "• Даст оценку контента\n"
             "• Отправьте голосовое — бот проанализирует\n"
-            "• 🔴 Анализ аккаунтов временно недоступен\n\n"
+            "• 🔴 Анализ аккаунтов временно недоступен\n"
+            "• 🔴 YouTube Shorts — временно не работает\n\n"
             "⚙️ Команды:\n"
             "/start — начать заново\n"
             "/help — эта справка"
@@ -338,7 +345,8 @@ async def cmd_help(message: Message):
             "• Faktlarni tekshiradi\n"
             "• Kontent bahosini beradi\n"
             "• Ovozli xabar yuboring — bot tahlil qiladi\n"
-            "• 🔴 Akkount tahlili vaqtincha ishlamaydi\n\n"
+            "• 🔴 Akkount tahlili vaqtincha ishlamaydi\n"
+            "• 🔴 YouTube Shorts — vaqtincha ishlamaydi\n\n"
             "⚙️ Buyruqlar:\n"
             "/start — qaytadan boshlash\n"
             "/help — ushbu yordam"
@@ -356,7 +364,8 @@ async def cmd_help(message: Message):
             "• Фактларни текширади\n"
             "• Контент баҳосини беради\n"
             "• Овозли хабар юборинг — бот таҳлил қилади\n"
-            "• 🔴 Аккаунт таҳлили вақтинча ишламайди\n\n"
+            "• 🔴 Аккаунт таҳлили вақтинча ишламайди\n"
+            "• 🔴 YouTube Shorts — вақтинча ишламайди\n\n"
             "⚙️ Буйруқлар:\n"
             "/start — қайтадан бошлаш\n"
             "/help — ушбу ёрдам"
@@ -1003,8 +1012,11 @@ async def handle_reel(message: Message):
 
 @router.message(F.text.func(lambda text: extract_youtube_url(text) is not None))
 async def handle_youtube(message: Message):
-    url = extract_youtube_url(message.text)
     lang = user_language.get(message.from_user.id, "lang_kirill")
+    await message.answer(YOUTUBE_DISABLED_MESSAGES.get(lang, YOUTUBE_DISABLED_MESSAGES["lang_kirill"]))
+    return
+
+    url = extract_youtube_url(message.text)
     logging.info(f"YOUTUBE SO'ROV: user_id={message.from_user.id} url={url} shorts_path={is_youtube_shorts_path(url)}")
     status_msg = await message.answer(YOUTUBE_STATUS_MESSAGES.get(lang, YOUTUBE_STATUS_MESSAGES["lang_kirill"]))
     file_path = None
