@@ -531,11 +531,7 @@ async def handle_post(message: Message):
         else:
             await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
 
-        if images:
-            result = await analyze_image_content(images, caption, lang)
-        elif caption:
-            result = await analyze_caption_only(caption, lang)
-        else:
+        if not images and not caption:
             stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "other", "mazmun topilmadi")
             if lang == "lang_rus":
                 await status_msg.edit_text("❌ В посте не найдено содержимого для анализа.")
@@ -545,11 +541,43 @@ async def handle_post(message: Message):
                 await status_msg.edit_text("❌ Постда таҳлил қилишга мазмун топилмади.")
             return
 
-        if is_moderation_refusal(result):
-            logging.warning(f"Moderatsiya rad etishi (handle_post): user_id={message.from_user.id} url={url}")
-            stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "moderation", "refusal-heuristic")
-            await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
-            return
+        fallback_used = False
+        try:
+            if images:
+                result = await analyze_image_content(images, caption, lang)
+            else:
+                result = await analyze_caption_only(caption, lang)
+            refused = is_moderation_refusal(result)
+        except BadRequestError as e:
+            err_msg = str(e).lower()
+            err_code = str(getattr(e, "code", "") or "").lower()
+            if "content_filter" not in err_msg and "content_filter" not in err_code and "moderation" not in err_msg:
+                raise
+            result = None
+            refused = True
+
+        if refused:
+            logging.warning(
+                f"GPT-4o moderatsiya rad etishi (handle_post): user_id={message.from_user.id} "
+                f"url={url}, gpt-4o-mini fallback urinilmoqda"
+            )
+            try:
+                if images:
+                    result = await analyze_image_content(images, caption, lang, "gpt-4o-mini")
+                else:
+                    result = await analyze_caption_only(caption, lang, "gpt-4o-mini")
+                fallback_refused = is_moderation_refusal(result)
+            except BadRequestError:
+                fallback_refused = True
+
+            if fallback_refused:
+                logging.warning(f"gpt-4o-mini fallback ham rad etdi (handle_post): user_id={message.from_user.id} url={url}")
+                stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "moderation", "refusal-heuristic+fallback")
+                await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
+                return
+            else:
+                fallback_used = True
+                logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_post): user_id={message.from_user.id} url={url}")
 
         if len(result) > 4000:
             await status_msg.edit_text(result[:4000])
@@ -557,7 +585,7 @@ async def handle_post(message: Message):
         else:
             await status_msg.edit_text(result)
 
-        stats.log_analysis(message.from_user.id, "instagram_post", lang, "success")
+        stats.log_analysis(message.from_user.id, "instagram_post", lang, "success", fallback_used=1 if fallback_used else 0)
     except asyncio.TimeoutError:
         stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "download_error", "timeout")
         if lang == "lang_rus":

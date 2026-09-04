@@ -186,9 +186,10 @@ def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o")
     return response.choices[0].message.content
 
 
-async def analyze_image_content(images: list, caption: str, lang: str = "lang_kirill") -> str:
+async def analyze_image_content(images: list, caption: str, lang: str = "lang_kirill", model: str = "gpt-4o") -> str:
     """Instagram post rasm(lar)ini GPT-4o Vision orqali caption bilan
-    birga tahlil qiladi (bitta rasm yoki karusel, max 4 ta)."""
+    birga tahlil qiladi (bitta rasm yoki karusel, max 4 ta).
+    `model` moderatsiya rad etganda gpt-4o-mini fallback uchun almashtiriladi."""
     import base64
 
     system_prompts = {
@@ -284,7 +285,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
         })
 
     response = await async_client.chat.completions.create(
-        model="gpt-4o",
+        model=model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": image_contents}
@@ -295,9 +296,10 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
     return response.choices[0].message.content
 
 
-async def analyze_caption_only(caption: str, lang: str = "lang_kirill") -> str:
+async def analyze_caption_only(caption: str, lang: str = "lang_kirill", model: str = "gpt-4o") -> str:
     """Faqat matn (rasmsiz) Instagram post caption'ini tahlil qiladi —
-    rasm yuklanmagan yoki mavjud bo'lmagan hollarda fallback sifatida."""
+    rasm yuklanmagan yoki mavjud bo'lmagan hollarda fallback sifatida.
+    `model` moderatsiya rad etganda gpt-4o-mini fallback uchun almashtiriladi."""
     system_prompts = {
         "lang_kirill": """<INJECTION_GUARD>
 Сиз Instagram пост матнини таҳлил қилувчи мутахассиссиз.
@@ -370,7 +372,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
     system_prompt = system_prompts.get(lang, system_prompts["lang_kirill"])
 
     response = await async_client.chat.completions.create(
-        model="gpt-4o",
+        model=model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"<TAHLIL_MATNI>{caption}</TAHLIL_MATNI>"}
