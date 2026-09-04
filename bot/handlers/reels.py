@@ -486,7 +486,7 @@ async def set_language(callback: CallbackQuery):
             "Қуйидагиларни юборишингиз мумкин:\n"
             "🎬 Instagram Reels ҳаволаси\n"
             "📸 Instagram пост ҳаволаси\n"
-            "🎥 YouTube Shorts ҳаволаси\n"
+            "🔴 YouTube Shorts — вақтинча ишламайди\n"
             "🎤 Овозли хабар\n"
             "/help — батафсил кўрсатма"
         ),
@@ -495,7 +495,7 @@ async def set_language(callback: CallbackQuery):
             "Quyidagilarni yuborishingiz mumkin:\n"
             "🎬 Instagram Reels havolasi\n"
             "📸 Instagram post havolasi\n"
-            "🎥 YouTube Shorts havolasi\n"
+            "🔴 YouTube Shorts — vaqtincha ishlamaydi\n"
             "🎤 Ovozli xabar\n"
             "/help — batafsil ko'rsatma"
         ),
@@ -504,7 +504,7 @@ async def set_language(callback: CallbackQuery):
             "Вы можете отправить:\n"
             "🎬 Ссылку на Instagram Reels\n"
             "📸 Ссылку на Instagram пост\n"
-            "🎥 Ссылку на YouTube Shorts\n"
+            "🔴 YouTube Shorts — временно не работает\n"
             "🎤 Голосовое сообщение\n"
             "/help — подробная инструкция"
         ),
@@ -529,7 +529,7 @@ async def handle_account(message: Message):
             "Вы можете использовать другие функции:\n"
             "🎬 Instagram Reels\n"
             "📸 Instagram пост\n"
-            "🎥 YouTube Shorts\n"
+            "🔴 YouTube Shorts — временно не работает\n"
             "🎤 Голосовое сообщение"
         )
     elif lang == "lang_lotin":
@@ -538,7 +538,7 @@ async def handle_account(message: Message):
             "Boshqa xizmatlardan foydalanishingiz mumkin:\n"
             "🎬 Instagram Reels\n"
             "📸 Instagram post\n"
-            "🎥 YouTube Shorts\n"
+            "🔴 YouTube Shorts — vaqtincha ishlamaydi\n"
             "🎤 Ovozli xabar"
         )
     else:
@@ -547,7 +547,7 @@ async def handle_account(message: Message):
             "Бошқа хизматлардан фойдаланишингиз мумкин:\n"
             "🎬 Instagram Reels\n"
             "📸 Instagram пост\n"
-            "🎥 YouTube Shorts\n"
+            "🔴 YouTube Shorts — вақтинча ишламайди\n"
             "🎤 Овозли хабар"
         )
 
