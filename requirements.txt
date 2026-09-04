@@ -29,5 +29,5 @@ tqdm==4.67.3
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 yarl==1.23.0
-yt-dlp==2026.8.19
+yt-dlp>=2024.11.18
 instaloader==4.15.3
