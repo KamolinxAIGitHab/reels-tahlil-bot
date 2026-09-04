@@ -254,8 +254,7 @@ async def cmd_start(message: Message):
         "🖼 Instagram rasm / расм постлари\n"
         "🎠 Instagram karusel / карусель постлари\n"
         "📝 Instagram matn / матн постлари\n"
-        "🎙 Telegram ovozli xabar / овозли хабар\n"
-        "👤 Instagram akkount taxlili — vaqtincha ishlamaydi / аккаунт таҳлили — вақтинча ишламайди\n\n"
+        "🎙 Telegram ovozli xabar / овозли хабар\n\n"
         "🌐 Tilni tanlang / Тилни танланг / Выберите язык:",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
