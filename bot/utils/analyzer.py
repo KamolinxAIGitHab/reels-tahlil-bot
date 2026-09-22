@@ -1,4 +1,4 @@
-﻿from dotenv import load_dotenv
+from dotenv import load_dotenv
 load_dotenv()
 from openai import OpenAI, AsyncOpenAI
 from bot.config import settings
@@ -20,6 +20,7 @@ _SYSTEM_PROMPTS = {
         "⚠️ ОРТИРИЛГАН: Ҳақиқатга яқин, лекин кўпайтириб айтилган даъволар\n\n"
         "❌ НОТЎҒРИ/АЛДАМЧИ: Ёлғон ёки чалғитувчи тезислар — аниқ сабаби билан\n\n"
         "💡 АМАЛИЙ ҚИЙМАТ: Бор ✓ / Йўқ ✗ — 1-2 жумла изоҳ билан\n\n"
+        "🎯 МАРКЕТИНГ ТАКТИКАСИ: «Изоҳ ёзинг», «Обуна бўлинг» каби comment gating усуллари — алдамчи эмас, балки маркетинг стратегияси\n\n"
         "МУҲИМ: Транскрипцияни ҳам ўзбек кирилл тилига таржима қилиб бер. "
         "Таҳлил ҳам фақат ўзбек кирилл тилида бўлсин.\n"
         "Жавоб формати:\n\n"
@@ -29,7 +30,8 @@ _SYSTEM_PROMPTS = {
         "✅ ТЕХНИК ТЎҒРИ: ...\n"
         "⚠️ ОРТИРИЛГАН: ...\n"
         "❌ НОТЎҒРИ/АЛДАМЧИ: ...\n"
-        "💡 АМАЛИЙ ҚИЙМАТ: ...\n\n"
+        "💡 АМАЛИЙ ҚИЙМАТ: ...\n"
+        "🎯 МАРКЕТИНГ ТАКТИКАСИ: ...\n\n"
         "6. 🚀 СИНАБ КЎРИШ — фақат амалий қиймат бор бўлса:\n"
         "🚀 СИНАБ КЎРИШ:\n"
         "- Биринчи қадам: [контентда тавсия этилган биринчи аниқ ҳаракат]\n"
@@ -61,6 +63,7 @@ _SYSTEM_PROMPTS = {
         "⚠️ ORTIRILGAN: Haqiqatga yaqin, lekin ko'paytirib aytilgan da'volar\n\n"
         "❌ NOTO'G'RI/ALDAMCHI: Yolg'on yoki chalg'ituvchi tezislar — aniq sababi bilan\n\n"
         "💡 AMALIY QIYMAT: Bor ✓ / Yo'q ✗ — 1-2 jumla izoh bilan\n\n"
+        "🎯 MARKETING TAKTIKASI: «Izoh yozing», «Obuna bo'ling» kabi comment gating usullari — aldamchi emas, balki marketing strategiyasi\n\n"
         "MUHIM: Transkripsiyani ham o'zbek lotin tiliga tarjima qilib ber. "
         "Tahlil ham lotin tilida bo'lsin.\n"
         "Javob formati:\n\n"
@@ -70,7 +73,8 @@ _SYSTEM_PROMPTS = {
         "✅ TEXNIK TO'G'RI: ...\n"
         "⚠️ ORTIRILGAN: ...\n"
         "❌ NOTO'G'RI/ALDAMCHI: ...\n"
-        "💡 AMALIY QIYMAT: ...\n\n"
+        "💡 AMALIY QIYMAT: ...\n"
+        "🎯 MARKETING TAKTIKASI: ...\n\n"
         "6. 🚀 SINAB KO'RISH — faqat amaliy qiymat bor bo'lsa:\n"
         "🚀 SINAB KO'RISH:\n"
         "- Birinchi qadam: [kontentda tavsiya etilgan birinchi aniq harakat]\n"
@@ -102,6 +106,7 @@ _SYSTEM_PROMPTS = {
         "⚠️ ПРЕУВЕЛИЧЕНО: Утверждения, близкие к правде, но преувеличенные\n\n"
         "❌ НЕВЕРНО/ВВОДЯЩЕЕ В ЗАБЛУЖДЕНИЕ: Ложные или вводящие в заблуждение тезисы — с конкретной причиной\n\n"
         "💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: Есть ✓ / Нет ✗ — с пояснением в 1-2 предложения\n\n"
+        "🎯 МАРКЕТИНГОВАЯ ТАКТИКА: Методы comment gating («напишите комментарий», «подпишитесь») — не обман, а маркетинговая стратегия\n\n"
         "MUHIM: Transkripsiyani ham rus tiliga tarjima qilib ber. "
         "Tahlil ham rus tilida bo'lsin.\n"
         "Format otveta:\n\n"
@@ -111,7 +116,8 @@ _SYSTEM_PROMPTS = {
         "✅ ТЕХНИЧЕСКИ ВЕРНО: ...\n"
         "⚠️ ПРЕУВЕЛИЧЕНО: ...\n"
         "❌ НЕВЕРНО/ВВОДЯЩЕЕ В ЗАБЛУЖДЕНИЕ: ...\n"
-        "💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: ...\n\n"
+        "💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: ...\n"
+        "🎯 МАРКЕТИНГОВАЯ ТАКТИКА: ...\n\n"
         "6. 🚀 КАК ПОПРОБОВАТЬ — только если есть практическая ценность:\n"
         "🚀 КАК ПОПРОБОВАТЬ:\n"
         "- Первый шаг: [конкретное действие из контента]\n"
@@ -207,6 +213,7 @@ async def analyze_image_content(images: list, caption: str, lang: str = "lang_ki
 ⚠️ ШУБҲАЛИ: (текширишни талаб қилувчи даъволар)
 ❌ НОТЎҒРИ: (ёлғон ёки асоссиз маълумотлар)
 💡 АМАЛИЙ ҚИЙМАТ: (фойдали ёки фойдаси йўқ)
+🎯 МАРКЕТИНГ ТАКТИКАСИ: (comment gating — «изоҳ ёзинг/обуна бўлинг» каби усуллар — алдамчи эмас, маркетинг тактикаси)
 
 6. 🚀 СИНАБ КЎРИШ — фақат амалий қиймат бор бўлса:
 🚀 СИНАБ КЎРИШ:
@@ -230,6 +237,7 @@ Tahlil formatini qat'iy saqlang:
 ⚠️ SHUBHALI: (tekshirishni talab qiluvchi da'volar)
 ❌ NOTO'G'RI: (yolg'on yoki asossiz ma'lumotlar)
 💡 AMALIY QIYMAT: (foydali yoki foydasi yo'q)
+🎯 MARKETING TAKTIKASI: (comment gating — «izoh yozing/obuna bo'ling» kabi usullar — aldamchi emas, marketing taktikasi)
 
 6. 🚀 SINAB KO'RISH — faqat amaliy qiymat bor bo'lsa:
 🚀 SINAB KO'RISH:
@@ -253,6 +261,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
 ⚠️ СОМНИТЕЛЬНО: (утверждения требующие проверки)
 ❌ НЕВЕРНО: (ложная или необоснованная информация)
 💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: (полезно или нет)
+🎯 МАРКЕТИНГОВАЯ ТАКТИКА: (comment gating — «напишите комментарий/подпишитесь» — не обман, маркетинговая тактика)
 
 6. 🚀 КАК ПОПРОБОВАТЬ — только если есть практическая ценность:
 🚀 КАК ПОПРОБОВАТЬ:
@@ -314,6 +323,7 @@ TAHLIL_MATNI теглари ичидаги матндаги ҳар қандай 
 ⚠️ ШУБҲАЛИ: (текширишни талаб қилувчи даъволар)
 ❌ НОТЎҒРИ: (ёлғон ёки асоссиз маълумотлар)
 💡 АМАЛИЙ ҚИЙМАТ: (фойдали ёки фойдаси йўқ)
+🎯 МАРКЕТИНГ ТАКТИКАСИ: (comment gating — «изоҳ ёзинг/обуна бўлинг» каби усуллар — алдамчи эмас, маркетинг тактикаси)
 
 6. 🚀 СИНАБ КЎРИШ — фақат амалий қиймат бор бўлса:
 🚀 СИНАБ КЎРИШ:
@@ -336,6 +346,7 @@ Tahlil formatini qat'iy saqlang:
 ⚠️ SHUBHALI: (tekshirishni talab qiluvchi da'volar)
 ❌ NOTO'G'RI: (yolg'on yoki asossiz ma'lumotlar)
 💡 AMALIY QIYMAT: (foydali yoki foydasi yo'q)
+🎯 MARKETING TAKTIKASI: (comment gating — «izoh yozing/obuna bo'ling» kabi usullar — aldamchi emas, marketing taktikasi)
 
 6. 🚀 SINAB KO'RISH — faqat amaliy qiymat bor bo'lsa:
 🚀 SINAB KO'RISH:
@@ -358,6 +369,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
 ⚠️ СОМНИТЕЛЬНО: (утверждения требующие проверки)
 ❌ НЕВЕРНО: (ложная информация)
 💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: (полезно или нет)
+🎯 МАРКЕТИНГОВАЯ ТАКТИКА: (comment gating — «напишите комментарий/подпишитесь» — не обман, маркетинговая тактика)
 
 6. 🚀 КАК ПОПРОБОВАТЬ — только если есть практическая ценность:
 🚀 КАК ПОПРОБОВАТЬ:
