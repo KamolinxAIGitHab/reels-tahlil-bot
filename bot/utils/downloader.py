@@ -1,6 +1,8 @@
 import yt_dlp
 import os
 import uuid
+import time
+import shutil
 import asyncio
 import base64
 import subprocess
@@ -31,13 +33,72 @@ class PrivateContentError(Exception):
     yuklanmaganda ko'tariladi."""
 
 
+class VideoPostError(Exception):
+    """Instagram post (/p/...) rasm emas, video ekanida ko'tariladi —
+    chaqiruvchi uni Reels yuklash yo'liga o'tkazishi kerak."""
+
+
+# Instagram cookie yaroqsiz bo'lganini bildiruvchi aniq belgilar. Eslatma:
+# yalang'och "401" qidirilmaydi — u shortcode yoki URL ichida tasodifan
+# uchrashi mumkin (masalan "...Db401x...").
+_COOKIE_ERROR_MARKERS = (
+    "http error 401",
+    "401: unauthorized",
+    "login required",
+    "login_required",
+    "please log in",
+    "redirected to the login page",
+    "checkpoint_required",
+    "challenge_required",
+)
+
+# Haqiqiy so'rovlar limiti belgilari. Yalang'och "429" va "limit" so'zi
+# ataylab olib tashlangan — ular boshqa xatolarni ham "limit" deb ko'rsatardi.
+_RATE_LIMIT_MARKERS = (
+    "http error 429",
+    "too many requests",
+    "rate-limit",
+    "rate limit",
+    "ratelimit",
+    "wait a few minutes",
+)
+
+# Cookie yaroqsiz deb topilgach, shu vaqt davomida Instagram'ga cookie bilan
+# so'rov yuborilmaydi (faqat anonim urinish qilinadi) — o'lik cookie bilan
+# qayta-qayta so'rov yuborish akkauntni xavf ostiga qo'yadi.
+COOKIE_COOLDOWN_SECONDS = 15 * 60
+_cookie_dead_until = 0.0
+
+
+def cookie_in_cooldown() -> bool:
+    """Cookie yaqinda yaroqsiz deb topilgan va hali kutish vaqti
+    tugamaganmi, shuni qaytaradi."""
+    return time.monotonic() < _cookie_dead_until
+
+
+def _mark_cookie_dead() -> None:
+    global _cookie_dead_until
+    _cookie_dead_until = time.monotonic() + COOKIE_COOLDOWN_SECONDS
+    logging.error(
+        f"Instagram cookie yaroqsiz deb belgilandi — {COOKIE_COOLDOWN_SECONDS // 60} "
+        f"daqiqa davomida cookie ishlatilmaydi"
+    )
+
+
 def _is_cookie_expired(e: Exception) -> bool:
-    """Berilgan xato Instagram cookie eskirganini (LoginRequired yoki
-    401) bildiradimi, shuni tekshiradi."""
+    """Berilgan xato Instagram cookie yaroqsiz bo'lganini bildiradimi
+    (LoginRequired, HTTP 401, login sahifasiga yo'naltirish va h.k.)."""
     if isinstance(e, instaloader.LoginRequiredException):
         return True
     msg = str(e).lower()
-    return "401" in msg or "login required" in msg or "please log in" in msg
+    return any(k in msg for k in _COOKIE_ERROR_MARKERS)
+
+
+def is_rate_limited(e: Exception) -> bool:
+    """Berilgan xato Instagram'ning haqiqiy so'rovlar limitini
+    bildiradimi, shuni tekshiradi."""
+    msg = str(e).lower()
+    return any(k in msg for k in _RATE_LIMIT_MARKERS)
 
 
 def _is_private_content(e: Exception) -> bool:
@@ -134,14 +195,15 @@ def _new_instaloader(**extra_opts) -> "instaloader.Instaloader":
 async def download_reels_audio(url: str):
     """Instagram Reels videosini yt-dlp orqali yuklaydi, undan ffmpeg bilan
     audio yo'lakchasini ajratib oladi (Whisper API'ning 25MB chegarasidan
-    oshib ketmaslik uchun) va (audio_path, caption, used_cookie_fallback)
-    qaytaradi. Avval cookie'siz, muvaffaqiyatsiz bo'lsa cookie bilan
-    urinib ko'riladi — used_cookie_fallback ikkinchi urinish
-    ishlatilganini bildiradi. Caption instaloader orqali alohida,
-    best-effort tarzda olinadi — topilmasa yoki timeout bo'lsa, bo'sh
-    satr qaytariladi."""
-    import re
+    oshib ketmaslik uchun) va (audio_path, caption, used_cookie) qaytaradi.
 
+    So'rovlar soni kamaytirilgan: cookie bilan boshlanadi (anonim so'rovlar
+    server IP'sidan doim limitga uchraydi), caption esa alohida so'rovsiz,
+    yt-dlp'ning o'z javobidan ('description') olinadi. Cookie yaroqsiz bo'lsa,
+    bir marta anonim urinib ko'riladi va cookie 15 daqiqaga 'o'lik' deb
+    belgilanadi — shu vaqt ichida faqat anonim urinish bo'ladi.
+    used_cookie — cookie ishlatilgan so'rovni bildiradi (statistika uchun).
+    Caption topilmasa, bo'sh satr qaytariladi."""
     output_dir = "downloads"
     os.makedirs(output_dir, exist_ok=True)
     tmp_dir = os.path.join(output_dir, str(uuid.uuid4()))
@@ -149,34 +211,43 @@ async def download_reels_audio(url: str):
 
     loop = asyncio.get_event_loop()
 
-    def _get_caption():
-        try:
-            L = _new_instaloader()
-            match = re.search(r'/reel/([A-Za-z0-9_-]+)', url)
-            if match:
-                shortcode = match.group(1)
-                post = instaloader.Post.from_shortcode(L.context, shortcode)
-                return post.caption or ""
-        except Exception:
-            return ""
+    def _extract(use_cookies: bool) -> str:
+        """Videoni yuklaydi va caption'ni qaytaradi."""
+        with yt_dlp.YoutubeDL(_build_ydl_opts(tmp_dir, use_cookies=use_cookies)) as ydl:
+            info = ydl.extract_info(url, download=True)
+        if isinstance(info, dict):
+            return (info.get("description") or "").strip()
+        return ""
 
     def _download():
-        # 1-urinish: cookie'siz (ko'plab ochiq/public Reels cookie'siz ham
-        # yuklanadi — cookie ba'zan noto'g'ri/eskirgan bo'lsa, aksincha
-        # so'rovni buzib qo'yishi mumkin). Muvaffaqiyatsiz bo'lsa, faqat
-        # shunda cookie bilan qayta urinamiz.
-        used_cookie_fallback = False
-        try:
-            with yt_dlp.YoutubeDL(_build_ydl_opts(tmp_dir, use_cookies=False)) as ydl:
-                ydl.download([url])
-        except Exception:
-            used_cookie_fallback = True
+        has_cookie_source = bool(_COOKIES_FILE or (INSTAGRAM_USER and INSTAGRAM_PASS))
+        used_cookie = False
+        caption = ""
+
+        if has_cookie_source and not cookie_in_cooldown():
+            used_cookie = True
             try:
-                with yt_dlp.YoutubeDL(_build_ydl_opts(tmp_dir, use_cookies=True)) as ydl:
-                    ydl.download([url])
+                caption = _extract(True)
             except Exception as e:
-                if _is_cookie_expired(e):
+                if not _is_cookie_expired(e):
+                    if _is_private_content(e):
+                        raise PrivateContentError("Instagram kontenti xususiy (private)") from e
+                    raise
+                # Cookie yaroqsiz: belgilab qo'yamiz va bir marta anonim urinamiz
+                logging.error(f"Instagram cookie xatosi (video yuklashda): {e}")
+                _mark_cookie_dead()
+                used_cookie = False
+                try:
+                    caption = _extract(False)
+                except Exception:
                     raise CookieExpiredError("Instagram cookie eskirgan (video yuklashda)") from e
+        else:
+            # Cookie yo'q yoki 'o'lik' deb belgilangan — faqat anonim urinish
+            try:
+                caption = _extract(False)
+            except Exception as e:
+                if _is_cookie_expired(e) or has_cookie_source:
+                    raise CookieExpiredError("Instagram cookie yaroqsiz (anonim urinish ham o'tmadi)") from e
                 if _is_private_content(e):
                     raise PrivateContentError("Instagram kontenti xususiy (private)") from e
                 raise
@@ -203,15 +274,14 @@ async def download_reels_audio(url: str):
         if not os.path.exists(audio_path):
             raise FileNotFoundError("Audio ajratib olinmadi!")
 
-        return audio_path, used_cookie_fallback
+        return audio_path, caption, used_cookie
 
-    audio_path, used_cookie_fallback = await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=90)
     try:
-        caption = await asyncio.wait_for(loop.run_in_executor(None, _get_caption), timeout=20)
-    except asyncio.TimeoutError:
-        caption = ""
-
-    return audio_path, caption, used_cookie_fallback
+        return await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=90)
+    except BaseException:
+        # Xato bo'lsa, yarim yuklangan fayllar diskda qolib ketmasin
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise
 
 
 class VideoTooLongError(Exception):
@@ -376,6 +446,10 @@ async def download_instagram_image(url: str):
     loop = asyncio.get_event_loop()
 
     def _download():
+        if cookie_in_cooldown():
+            # Post oqimi cookie'siz ishlamaydi — o'lik cookie bilan so'rov yubormaymiz
+            raise CookieExpiredError("Instagram cookie yaroqsiz (post, cooldown)")
+
         L = _new_instaloader(
             download_pictures=True,
             download_videos=False,
@@ -395,28 +469,44 @@ async def download_instagram_image(url: str):
             post = instaloader.Post.from_shortcode(L.context, shortcode)
             caption = post.caption or ""
             images = []
+            has_video = False
 
-            if post.typename == "GraphSidecar":
+            if post.typename == "GraphVideo":
+                # /p/ havolasi aslida video — Reels yo'liga o'tkaziladi
+                raise VideoPostError(url)
+            elif post.typename == "GraphSidecar":
                 for i, node in enumerate(post.get_sidecar_nodes()):
-                    if not node.is_video:
-                        img_path = os.path.join(tmp_dir, f"slide_{i}.jpg")
-                        urllib.request.urlretrieve(node.display_url, img_path)
-                        images.append(img_path)
+                    if node.is_video:
+                        has_video = True
+                        continue
+                    img_path = os.path.join(tmp_dir, f"slide_{i}.jpg")
+                    urllib.request.urlretrieve(node.display_url, img_path)
+                    images.append(img_path)
             elif post.typename == "GraphImage":
                 img_path = os.path.join(tmp_dir, f"{shortcode}.jpg")
                 urllib.request.urlretrieve(post.url, img_path)
                 images.append(img_path)
+        except VideoPostError:
+            raise
         except Exception as e:
             if _is_cookie_expired(e):
+                logging.error(f"Instagram cookie xatosi (post o'qishda): {e}")
+                _mark_cookie_dead()
                 raise CookieExpiredError("Instagram cookie eskirgan (post o'qishda)") from e
             raise
 
         if not images:
+            if has_video:
+                raise VideoPostError(url)
             raise ValueError("Rasmlar topilmadi")
 
         return images, caption
 
-    return await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=45)
+    try:
+        return await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=45)
+    except BaseException:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise
 
 async def download_account_posts(username: str) -> list:
     """

@@ -173,12 +173,74 @@ _USER_PROMPTS = {
     ),
 }
 
+# Reels/ovozli xabar tahlili uchun qo'shimcha qat'iy qoidalar. Namunaviy
+# muammolar: har safar boshqacha yorliqlar ("CAPTION"/"КАПЦІЯ"), begona
+# qatorlar ("ИЗОҲ: ..."), bo'sh joyni o'ylab to'ldirish, "noto'g'ri"
+# bo'limiga oddiy iboralarning tushib qolishi.
+_QUALITY_RULES = {
+    "lang_kirill": (
+        "\n\nҚЎШИМЧА ҚОИДАЛАР (қатъий риоя қил):\n"
+        "1. Матнда «CAPTION:» ва «AUDIO MATNI:» бўлимлари бўлса, транскрипцияда "
+        "уларни айнан «Изоҳ матни:» ва «Аудио матни:» деб ёз, бошқа ном ишлатма. "
+        "Изоҳ матнини (caption) таржима қилма ва ўзгартирма — қандай бўлса, "
+        "шундай қолдир.\n"
+        "2. Аудиода эшитилган бренд, одам ва маҳсулот номи изоҳ матнидаги ёзувдан "
+        "фарқ қилса, изоҳ матнидаги ёзувни ол. Изоҳда йўқ ва аудиода ноаниқ "
+        "жойларни тахмин қилма — «[ноаниқ]» деб қолдир.\n"
+        "3. Транскрипциядан ташқари ҳеч қандай изоҳ, огоҳлантириш ёки «ИЗОҲ:» "
+        "қаторини қўшма. Фақат ўзбек кирилл ҳарфларидан фойдалан (украин ва "
+        "бошқа ҳарфларсиз).\n"
+        "4. «❌ НОТЎҒРИ/АЛДАМЧИ» бўлимига фақат аниқ текшириладиган ва нотўғри ёки "
+        "чалғитувчи ФАКТ-даъволарни ёз. Фикр, тавсия, кутилма ёки умумий хавфни "
+        "бу ерга ёзма. Бундай даъво бўлмаса, «Аниқ нотўғри даъво топилмади.» деб ёз.\n"
+        "5. Манбасиз рақам ёки статистикани («100 мингдан бири», «800 миллион "
+        "токен» каби) «⚠️ ОРТИРИЛГАН» бўлимида «текширилмаган» деб белгила."
+    ),
+    "lang_lotin": (
+        "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
+        "1. Matnda «CAPTION:» va «AUDIO MATNI:» bo'limlari bo'lsa, transkripsiyada "
+        "ularni aynan «Izoh matni:» va «Audio matni:» deb yoz, boshqa nom ishlatma. "
+        "Izoh matnini (caption) tarjima qilma va o'zgartirma — qanday bo'lsa, "
+        "shunday qoldir.\n"
+        "2. Audioda eshitilgan brend, odam va mahsulot nomi izoh matnidagi yozuvdan "
+        "farq qilsa, izoh matnidagi yozuvni ol. Izohda yo'q va audioda noaniq "
+        "joylarni taxmin qilma — «[noaniq]» deb qoldir.\n"
+        "3. Transkripsiyadan tashqari hech qanday izoh, ogohlantirish yoki «IZOH:» "
+        "qatorini qo'shma.\n"
+        "4. «❌ NOTO'G'RI/ALDAMCHI» bo'limiga faqat aniq tekshiriladigan va noto'g'ri "
+        "yoki chalg'ituvchi FAKT-da'volarni yoz. Fikr, tavsiya, kutilma yoki umumiy "
+        "xavfni bu yerga yozma. Bunday da'vo bo'lmasa, «Aniq noto'g'ri da'vo "
+        "topilmadi.» deb yoz.\n"
+        "5. Manbasiz raqam yoki statistikani («100 mingdan biri», «800 million "
+        "token» kabi) «⚠️ ORTIRILGAN» bo'limida «tekshirilmagan» deb belgila."
+    ),
+    "lang_rus": (
+        "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
+        "1. Если в тексте есть разделы «CAPTION:» и «AUDIO MATNI:», в транскрипции "
+        "назови их ровно «Подпись:» и «Аудио:», другие названия не используй. "
+        "Подпись (caption) не переводи и не меняй.\n"
+        "2. Если бренд, имя или название продукта в аудио отличается от написания "
+        "в подписи, бери написание из подписи. Неясные места, которых нет в "
+        "подписи, не придумывай — оставляй «[неразборчиво]».\n"
+        "3. Не добавляй к транскрипции никаких пояснений, предупреждений или "
+        "строк вроде «ПРИМЕЧАНИЕ:».\n"
+        "4. В раздел «❌ НЕВЕРНО/ВВОДЯЩЕЕ В ЗАБЛУЖДЕНИЕ» пиши только конкретные "
+        "проверяемые ФАКТИЧЕСКИЕ утверждения, которые неверны или вводят в "
+        "заблуждение. Мнения, советы, ожидания и общие риски сюда не пиши. Если "
+        "таких утверждений нет, напиши «Явно неверных утверждений не найдено.».\n"
+        "5. Числа и статистику без источника («1 из 100 тысяч», «800 миллионов "
+        "токенов») отмечай в разделе «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено»."
+    ),
+}
+
 def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o") -> str:
     """Transkripsiya matnini (Reels ovozi yoki ovozli xabar) tanlangan
     tilga tarjima qilib, texnik to'g'rilik/amaliy qiymat bo'yicha
     tahlil qiladi. Sinxron — chaqiruvchi run_in_executor bilan o'rashi kerak.
     `model` moderatsiya rad etganda gpt-4o-mini fallback uchun almashtiriladi."""
-    system_prompt = _SYSTEM_PROMPTS.get(lang, _SYSTEM_PROMPTS["lang_kirill"])
+    system_prompt = _SYSTEM_PROMPTS.get(lang, _SYSTEM_PROMPTS["lang_kirill"]) + _QUALITY_RULES.get(
+        lang, _QUALITY_RULES["lang_kirill"]
+    )
     user_prompt = _USER_PROMPTS.get(lang, _USER_PROMPTS["lang_kirill"]).format(text=text)
 
     response = client.chat.completions.create(

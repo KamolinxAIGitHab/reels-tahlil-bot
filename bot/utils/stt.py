@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import subprocess
 from typing import Optional
@@ -39,9 +40,23 @@ def _probe_audio(file_path: str) -> tuple[Optional[float], Optional[float]]:
     return duration, mean_volume
 
 
-def transcribe_audio(file_path: str, language: str = "uz") -> str:
+# Whisper o'zbekcha nutqni ba'zan boshqa turkiy til deb aniqlaydi (masalan,
+# qozoqcha) va shu tilda xato matn chiqaradi. Shunday aniqlansa, audio
+# o'zbek tili (uz) bilan qayta transkripsiya qilinadi.
+_UZBEK_MISDETECTED_LANGUAGES = {"kazakh", "kyrgyz", "tatar", "bashkir", "turkmen"}
+
+# gpt-4o-transcribe kabi boshqa modelni sinash uchun: STT_MODEL muhit o'zgaruvchisi
+STT_MODEL = os.getenv("STT_MODEL", "whisper-1")
+_PROMPT_MAX_CHARS = 600
+
+
+def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Optional[str] = None) -> str:
     """
     Transcribes the audio from the given file path using OpenAI Whisper.
+
+    language — aniq til kodi (masalan "ru"); None bo'lsa, til avtomatik
+    aniqlanadi. prompt — odatda Reels caption'i: undagi brend va nomlar
+    Whisper'ga imlo bo'yicha yordam beradi.
     """
     try:
         duration, mean_volume = _probe_audio(file_path)
@@ -56,14 +71,31 @@ def transcribe_audio(file_path: str, language: str = "uz") -> str:
     except Exception as e:
         logging.warning(f"Audio tekshiruvi muvaffaqiyatsiz, davom etilmoqda: {e}")
 
-    with open(file_path, "rb") as audio_file:
-        transcription_params = {
-            "model": "whisper-1",
-            "file": audio_file,
+    def _call(lang: Optional[str], want_language: bool):
+        params = {
+            "model": STT_MODEL,
             "temperature": 0,
         }
-        if language:
-            transcription_params["language"] = language
+        if lang:
+            params["language"] = lang
+        if prompt:
+            # Whisper prompt'ning oxirgi qismini hisobga oladi
+            params["prompt"] = prompt.strip()[-_PROMPT_MAX_CHARS:]
+        if want_language:
+            params["response_format"] = "verbose_json"
+        with open(file_path, "rb") as audio_file:
+            return client.audio.transcriptions.create(file=audio_file, **params)
 
-        response = client.audio.transcriptions.create(**transcription_params)
+    # Til aniqlash faqat whisper-1 va til berilmagan holatda (verbose_json
+    # faqat whisper-1'da mavjud)
+    detect = STT_MODEL == "whisper-1" and not language
+    response = _call(language, detect)
+
+    if detect:
+        detected = (getattr(response, "language", None) or "").lower()
+        logging.info(f"WHISPER TIL: {detected or 'noma`lum'}")
+        if detected in _UZBEK_MISDETECTED_LANGUAGES:
+            logging.info(f"Whisper tilni '{detected}' deb aniqladi — 'uz' bilan qayta urinilmoqda")
+            response = _call("uz", False)
+
     return response.text

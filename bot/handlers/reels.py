@@ -8,12 +8,13 @@ import re
 import shutil
 import subprocess
 import logging
+import time
 from urllib.parse import urlparse, parse_qs
 from openai import RateLimitError, AuthenticationError, BadRequestError
 from bot.utils.downloader import (
     download_reels_audio, download_instagram_image, download_account_posts,
     download_youtube_shorts, get_youtube_subtitles, VideoTooLongError, AudioExtractionFailedError,
-    CookieExpiredError, PrivateContentError,
+    CookieExpiredError, PrivateContentError, VideoPostError, is_rate_limited,
 )
 from bot.utils import stats
 from bot.utils.stt import transcribe_audio, UnclearAudioError
@@ -32,20 +33,72 @@ COOKIE_EXPIRED_USER_MESSAGES = {
 }
 
 COOKIE_EXPIRED_ADMIN_MESSAGE = (
-    "⚠️ Instagram cookie eskirdi! COOKIE_YANGILASH.md bo'yicha yangilang."
+    "⚠️ Instagram cookie эскирди! COOKIE_YANGILASH.md бўйича янгиланг."
 )
 
+# Админга бир хил огоҳлантириш шу вақт оралиғида фақат бир марта юборилади
+COOKIE_ALERT_INTERVAL_SECONDS = 60 * 60
+_last_cookie_alert = 0.0
 
-async def notify_cookie_expired(message: Message, lang: str, source_type: str) -> None:
-    """Instagram cookie eskirganda foydalanuvchiga texnik nosozlik
-    xabarini, adminga esa cookie yangilash haqida alohida ogohlantirish
-    yuboradi va statistikaga 'cookie_expired' sifatida yozadi."""
+
+async def notify_cookie_expired(
+    message: Message, lang: str, source_type: str, error: Exception | None = None
+) -> None:
+    """Instagram cookie eskirganda statistikaga 'cookie_expired' yozadi va
+    adminga ogohlantirish yuboradi. Ogohlantirish soatiga bir martadan
+    ko'p yuborilmaydi (foydalanuvchi xabari esa har safar alohida)."""
+    global _last_cookie_alert
     logging.error(f"Instagram cookie eskirgan ({source_type}): user_id={message.from_user.id}")
     stats.log_analysis(message.from_user.id, source_type, lang, "error", "cookie_expired")
+
+    now = time.monotonic()
+    if _last_cookie_alert and now - _last_cookie_alert < COOKIE_ALERT_INTERVAL_SECONDS:
+        return
+    _last_cookie_alert = now
+
+    cause = getattr(error, "__cause__", None) or error
+    text = COOKIE_EXPIRED_ADMIN_MESSAGE
+    if cause:
+        text += f"\n\nСабаб: {str(cause)[:300]}"
     try:
-        await message.bot.send_message(ADMIN_USER_ID, COOKIE_EXPIRED_ADMIN_MESSAGE)
+        await message.bot.send_message(ADMIN_USER_ID, text)
     except Exception as e:
         logging.error(f"Adminga cookie ogohlantirishini yuborib bo'lmadi: {e}")
+
+
+# Bir xil Reels/post uchun natija qayta Instagram va OpenAI'ga so'rov yubormasdan
+# beriladi. Kesh xotirada saqlanadi (bot qayta ishga tushsa tozalanadi).
+RESULT_CACHE_TTL_SECONDS = 24 * 60 * 60
+RESULT_CACHE_MAX_ITEMS = 300
+_SHORTCODE_PATTERN = re.compile(r"instagram\.com/(?:reels?|p|tv)/([A-Za-z0-9_\-]+)", re.IGNORECASE)
+_result_cache: dict[tuple[str, str], tuple[float, str]] = {}
+
+
+def _cache_key(url: str, lang: str) -> tuple[str, str] | None:
+    match = _SHORTCODE_PATTERN.search(url or "")
+    return (match.group(1), lang) if match else None
+
+
+def cache_get(url: str, lang: str) -> str | None:
+    key = _cache_key(url, lang)
+    item = _result_cache.get(key) if key else None
+    if not item:
+        return None
+    saved_at, text = item
+    if time.monotonic() - saved_at > RESULT_CACHE_TTL_SECONDS:
+        _result_cache.pop(key, None)
+        return None
+    return text
+
+
+def cache_put(url: str, lang: str, text: str) -> None:
+    key = _cache_key(url, lang)
+    if not key:
+        return
+    if len(_result_cache) >= RESULT_CACHE_MAX_ITEMS:
+        oldest = min(_result_cache, key=lambda k: _result_cache[k][0])
+        _result_cache.pop(oldest, None)
+    _result_cache[key] = (time.monotonic(), text)
 
 OPENAI_CREDIT_MESSAGES = {
     "lang_kirill": (
@@ -556,6 +609,11 @@ async def handle_post(message: Message):
     text = message.text or ""
     url = extract_post_url(text)
     lang = user_language.get(message.from_user.id, "lang_kirill")
+    if cache_get(url, lang):
+        # Кешда фақат Reels оқимининг натижалари бор (видео постлар ҳам) —
+        # Instagram'га сўровсиз шу ердан берилади
+        await process_reel(message, url)
+        return
     status_msg = await message.answer("⏳ Пост таҳлил қилиняпти...")
     images = None
     try:
@@ -638,8 +696,15 @@ async def handle_post(message: Message):
             await status_msg.edit_text("⏳ Instagram javob berishda kechikmoqda. Keyinroq urinib ko'ring.")
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
-    except CookieExpiredError:
-        await notify_cookie_expired(message, lang, "instagram_post")
+    except VideoPostError:
+        logging.info(f"/p/ havola video ekan, Reels yo'liga o'tkazildi: {url}")
+        try:
+            await status_msg.delete()
+        except Exception:
+            pass
+        await process_reel(message, url)
+    except CookieExpiredError as e:
+        await notify_cookie_expired(message, lang, "instagram_post", e)
         await status_msg.edit_text(COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"]))
     except Exception as e:
         if await handle_openai_error(status_msg, lang, e, "handle_post", message.from_user.id, "instagram_post"):
@@ -649,7 +714,7 @@ async def handle_post(message: Message):
         if any(k in err for k in ("private", "restricted video", "not available")):
             stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "private_content", str(e))
             await status_msg.edit_text(PRIVATE_CONTENT_MESSAGES.get(lang, PRIVATE_CONTENT_MESSAGES["lang_kirill"]))
-        elif any(k in err for k in ("429", "too many", "rate", "wait a few minutes")):
+        elif is_rate_limited(e):
             stats.log_analysis(message.from_user.id, "instagram_post", lang, "error", "instagram_limit", str(e))
             if lang == "lang_rus":
                 await status_msg.edit_text("⏳ Instagram временно ограничил запросы. Повторите через 10-15 минут.")
@@ -838,8 +903,23 @@ async def handle_voice(message: Message):
 @router.message(F.text.func(lambda text: extract_reel_url(text) is not None))
 async def handle_reel(message: Message):
     url = extract_reel_url(message.text)
+    await process_reel(message, url)
+
+
+async def process_reel(message: Message, url: str):
+    """Reels (yoki video bo'lib chiqqan /p/ post) havolasini yuklab,
+    transkripsiya qiladi va tahlil natijasini yuboradi."""
     lang = user_language.get(message.from_user.id, "lang_kirill")
     logging.info(f"REELS SO'ROV: user_id={message.from_user.id} url={url}")
+
+    cached = cache_get(url, lang)
+    if cached:
+        logging.info(f"KESH: user_id={message.from_user.id} url={url}")
+        for i in range(0, len(cached), 4000):
+            await message.answer(cached[i:i + 4000], parse_mode="HTML")
+        stats.log_analysis(message.from_user.id, "instagram_reels", lang, "success", error_type="cache_hit")
+        return
+
     if lang == "lang_rus":
         status_msg = await message.answer("⏳ Видео загружается...")
     elif lang == "lang_lotin":
@@ -870,7 +950,7 @@ async def handle_reel(message: Message):
 
         try:
             whisper_lang = "ru" if lang == "lang_rus" else None
-            text = await loop.run_in_executor(None, transcribe_audio, file_path, whisper_lang)
+            text = await loop.run_in_executor(None, transcribe_audio, file_path, whisper_lang, reel_caption)
         except UnclearAudioError as e:
             logging.warning(f"Aniq bo'lmagan audio (user_id={message.from_user.id}, url={url}): {e}")
             stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "other", "audio sifati past")
@@ -946,6 +1026,7 @@ async def handle_reel(message: Message):
             f"🔍 <b>Таҳлил натижаси:</b>\n\n"
             f"{html.escape(analysis)}"
         )
+        cache_put(url, lang, result_text)
 
         if len(result_text) > 4000:
             await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
@@ -970,15 +1051,15 @@ async def handle_reel(message: Message):
     except PrivateContentError:
         stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "private_content", "xususiy kontent")
         await status_msg.edit_text(PRIVATE_CONTENT_MESSAGES.get(lang, PRIVATE_CONTENT_MESSAGES["lang_kirill"]))
-    except CookieExpiredError:
-        await notify_cookie_expired(message, lang, "instagram_reels")
+    except CookieExpiredError as e:
+        await notify_cookie_expired(message, lang, "instagram_reels", e)
         await status_msg.edit_text(COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"]))
     except Exception as e:
         if await handle_openai_error(status_msg, lang, e, "handle_reel", message.from_user.id, "instagram_reels"):
             return
         logging.error(f"Error handling reel: {e}")
         err = str(e).lower()
-        if any(k in err for k in ("rate", "429", "too many", "limit", "ratelimit")):
+        if is_rate_limited(e):
             stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "instagram_limit", str(e))
             rate_messages = {
                 "lang_kirill": (
