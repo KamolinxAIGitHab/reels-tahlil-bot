@@ -199,7 +199,11 @@ _QUALITY_RULES = {
         "7. Аудио матн бузуқ ёки маъносиз бўлса ёки бир жумла такрорланса, уни "
         "ўзингдан тўлдирма ва аудиода айтилмаган гапни (айниқса тескари маъноли) "
         "ёзма: тушунарли қисмини ол, қолганини «[ноаниқ]» деб қолдир, таҳлилни "
-        "фақат аниқ қисмга асосла."
+        "фақат аниқ қисмга асосла.\n"
+        "8. Фақат ИЗОҲ матни таржима қилинмайди. АУДИО матни қайси тилда бўлмасин "
+        "(рус, инглиз ва бошқа), уни албатта ўзбек кириллга таржима қил; аудио матни "
+        "асл тилида қолса — бу хато.\n"
+        "9. Агар амалий қиймат бўлмаса, «СИНАБ КЎРИШ» бўлимини умуман ёзма (ҳатто «йўқ» деб ҳам)."
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -225,7 +229,11 @@ _QUALITY_RULES = {
         "7. Audio matn buzuq yoki ma'nosiz bo'lsa yoki bir jumla takrorlansa, uni "
         "o'zingdan to'ldirma va audioda aytilmagan gapni (ayniqsa teskari ma'noli) "
         "yozma: tushunarli qismini ol, qolganini «[noaniq]» deb qoldir, tahlilni "
-        "faqat aniq qismga asosla."
+        "faqat aniq qismga asosla.\n"
+        "8. Faqat IZOH matni tarjima qilinmaydi. AUDIO matni qaysi tilda bo'lmasin "
+        "(rus, ingliz, boshqa), uni albatta tanlangan tilga tarjima qil; audio matni "
+        "asl tilida qolsa — bu xato.\n"
+        "9. Agar amaliy qiymat yo'q bo'lsa, «SINAB KO'RISH» bo'limini umuman yozma (hatto «yo'q» deb ham)."
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -250,7 +258,11 @@ _QUALITY_RULES = {
         "7. Если аудио искажено, бессмысленно или фраза повторяется, не достраивай "
         "текст и не пиши то, чего в аудио не говорилось (особенно с обратным "
         "смыслом): бери понятную часть, остальное оставляй «[неразборчиво]», "
-        "анализ основывай только на ясной части."
+        "анализ основывай только на ясной части.\n"
+        "8. Не переводится только ПОДПИСЬ. Текст АУДИО на любом языке (узбекском, "
+        "английском, другом) обязательно переведи на русский; если аудио осталось "
+        "на исходном языке — это ошибка.\n"
+        "9. Если практической ценности нет, раздел «КАК ПОПРОБОВАТЬ» не пиши вовсе (даже «нет»)."
     ),
 }
 

@@ -120,6 +120,34 @@ def cache_put(url: str, lang: str, text: str) -> None:
         _result_cache.pop(oldest, None)
     _result_cache[key] = (time.monotonic(), text)
 
+
+# Audio transkripsiyasi tildan mustaqil saqlanadi: bir xil Reels turli tilda
+# so'ralsa, Instagram va OpenAI STT'ga qayta murojaat qilinmaydi va barcha
+# tilda bir xil matn ishlatiladi (STT natijasi har chaqiruvda biroz farq qiladi).
+_transcript_cache: dict[str, tuple[float, str, str]] = {}
+
+
+def transcript_get(url: str):
+    key = _cache_key(url, "")
+    item = _transcript_cache.get(key[0]) if key else None
+    if not item:
+        return None
+    saved_at, text, caption = item
+    if time.monotonic() - saved_at > RESULT_CACHE_TTL_SECONDS:
+        _transcript_cache.pop(key[0], None)
+        return None
+    return text, caption
+
+
+def transcript_put(url: str, text: str, caption) -> None:
+    key = _cache_key(url, "")
+    if not key:
+        return
+    if len(_transcript_cache) >= RESULT_CACHE_MAX_ITEMS:
+        oldest = min(_transcript_cache, key=lambda k: _transcript_cache[k][0])
+        _transcript_cache.pop(oldest, None)
+    _transcript_cache[key[0]] = (time.monotonic(), text, caption or "")
+
 OPENAI_CREDIT_MESSAGES = {
     "lang_kirill": (
         "⚠️ Хизмат вақтинчалик тўхтатилди.\n"
@@ -802,7 +830,7 @@ async def handle_voice(message: Message):
 
         # Whisper orqali transkripsiya
         from bot.utils.stt import transcribe_audio
-        whisper_lang = "ru" if lang == "lang_rus" else None
+        whisper_lang = None  # til avtomatik aniqlanadi; GPT keyin kerakli tilga tarjima qiladi
         text = await loop.run_in_executor(None, transcribe_audio, mp3_path, whisper_lang)
 
         if not text or not text.strip():
@@ -960,41 +988,48 @@ async def process_reel(message: Message, url: str):
         else:
             await status_msg.edit_text("⬇️ Видео юкланяпти...")
 
-        file_path, reel_caption, used_cookie_fallback = await download_reels_audio(url)
-        tmp_dir = os.path.dirname(file_path)
-
-        if lang == "lang_rus":
-            await status_msg.edit_text("🎙 Аудио преобразуется в текст...")
-        elif lang == "lang_lotin":
-            await status_msg.edit_text("🎙 Audio matnga aylantirilmoqda...")
+        cached_tr = transcript_get(url)
+        if cached_tr:
+            text, reel_caption = cached_tr
+            used_cookie_fallback = False
+            logging.info(f"TRANSKRIPSIYA KESHI: user_id={message.from_user.id} url={url}")
         else:
-            await status_msg.edit_text("🎙 Аудио матнга айлантирилаяпти...")
+            file_path, reel_caption, used_cookie_fallback = await download_reels_audio(url)
+            tmp_dir = os.path.dirname(file_path)
 
-        try:
-            whisper_lang = "ru" if lang == "lang_rus" else None
-            text = await loop.run_in_executor(None, transcribe_audio, file_path, whisper_lang, reel_caption)
-        except UnclearAudioError as e:
-            logging.warning(f"Aniq bo'lmagan audio (user_id={message.from_user.id}, url={url}): {e}")
-            stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "other", "audio sifati past")
-            unclear_messages = {
-                "lang_kirill": (
-                    "⚠️ Видеода аниқ товуш ёки нутқ топилмади "
-                    "(жуда қисқа ёки жуда паст овозли).\n\n"
-                    "Илтимос, бошқа Reels ҳаволасини юборинг."
-                ),
-                "lang_lotin": (
-                    "⚠️ Videoda aniq tovush yoki nutq topilmadi "
-                    "(juda qisqa yoki juda past ovozli).\n\n"
-                    "Iltimos, boshqa Reels havolasini yuboring."
-                ),
-                "lang_rus": (
-                    "⚠️ В видео не найден чёткий звук или речь "
-                    "(слишком коротко или слишком тихо).\n\n"
-                    "Пожалуйста, отправьте другую ссылку на Reels."
-                ),
-            }
-            await status_msg.edit_text(unclear_messages.get(lang, unclear_messages["lang_kirill"]))
-            return
+            if lang == "lang_rus":
+                await status_msg.edit_text("🎙 Аудио преобразуется в текст...")
+            elif lang == "lang_lotin":
+                await status_msg.edit_text("🎙 Audio matnga aylantirilmoqda...")
+            else:
+                await status_msg.edit_text("🎙 Аудио матнга айлантирилаяпти...")
+
+            try:
+                whisper_lang = None  # til avtomatik aniqlanadi; GPT keyin kerakli tilga tarjima qiladi
+                text = await loop.run_in_executor(None, transcribe_audio, file_path, whisper_lang, reel_caption)
+            except UnclearAudioError as e:
+                logging.warning(f"Aniq bo'lmagan audio (user_id={message.from_user.id}, url={url}): {e}")
+                stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "other", "audio sifati past")
+                unclear_messages = {
+                    "lang_kirill": (
+                        "⚠️ Видеода аниқ товуш ёки нутқ топилмади "
+                        "(жуда қисқа ёки жуда паст овозли).\n\n"
+                        "Илтимос, бошқа Reels ҳаволасини юборинг."
+                    ),
+                    "lang_lotin": (
+                        "⚠️ Videoda aniq tovush yoki nutq topilmadi "
+                        "(juda qisqa yoki juda past ovozli).\n\n"
+                        "Iltimos, boshqa Reels havolasini yuboring."
+                    ),
+                    "lang_rus": (
+                        "⚠️ В видео не найден чёткий звук или речь "
+                        "(слишком коротко или слишком тихо).\n\n"
+                        "Пожалуйста, отправьте другую ссылку на Reels."
+                    ),
+                }
+                await status_msg.edit_text(unclear_messages.get(lang, unclear_messages["lang_kirill"]))
+                return
+            transcript_put(url, text, reel_caption)
 
         logging.info(f"WHISPER MATNI (user_id={message.from_user.id}): {text[:1000]}")
 
@@ -1169,7 +1204,7 @@ async def handle_youtube(message: Message):
             await status_msg.edit_text("🎙 Аудио матнга айлантирилаяпти...")
 
         try:
-            whisper_lang = "ru" if lang == "lang_rus" else None
+            whisper_lang = None  # til avtomatik aniqlanadi; GPT keyin kerakli tilga tarjima qiladi
             text = await loop.run_in_executor(None, transcribe_audio, file_path, whisper_lang)
         except UnclearAudioError as e:
             logging.warning(f"Aniq bo'lmagan audio (user_id={message.from_user.id}, url={url}): {e}")

@@ -44,6 +44,13 @@ def _probe_audio(file_path: str) -> tuple[Optional[float], Optional[float]]:
 STT_MODEL = os.getenv("STT_MODEL", "whisper-1")
 _PROMPT_MAX_CHARS = 600
 
+# O'zbekcha nutq til berilmaganda ba'zan boshqa tur (masalan, ozarbayjon)
+# imlosida yoziladi. Neytral ko'rsatma modelni o'zbek lotin imlosiga yo'naltiradi,
+# lekin rus/ingliz nutqni majburan o'zgartirmaydi. STT_HINT=0 bilan o'chiriladi.
+_LANG_HINT = "Nutq o'zbek, rus yoki ingliz tilida bo'lishi mumkin. O'zbekcha bo'lsa, o'zbek lotin imlosida yozing: o', g', sh, ch."
+_LANG_HINT_MARK = "lotin imlosida"
+_USE_HINT = os.getenv("STT_HINT", "1") != "0"
+
 
 def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Optional[str] = None) -> str:
     """
@@ -73,9 +80,12 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
         }
         if lang:
             params["language"] = lang
-        if prompt:
-            # Whisper prompt'ning oxirgi qismini hisobga oladi
-            params["prompt"] = prompt.strip()[-_PROMPT_MAX_CHARS:]
+        # Prompt'ning oxirgi qismi muhimroq: ko'rsatma oxirida turadi
+        hint = _LANG_HINT if _USE_HINT else ""
+        if prompt or hint:
+            room = _PROMPT_MAX_CHARS - (len(hint) + 1 if hint else 0)
+            base = (prompt or "").strip()[-room:]
+            params["prompt"] = (base + "\n" + hint).strip() if hint else base
         if want_language:
             params["response_format"] = "verbose_json"
         with open(file_path, "rb") as audio_file:
@@ -98,6 +108,8 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
     text = (response.text or "").strip()
     # Musiqa/shovqin ustidan Whisper ba'zan faqat emoji yoki belgilar
     # to'qiydi — harf deyarli bo'lmasa, nutq yo'q deb hisoblanadi.
+    if _LANG_HINT_MARK in text.lower():
+        raise UnclearAudioError("Nutq topilmadi (model ko'rsatma matnini qaytardi)")
     if sum(ch.isalpha() for ch in text) < 3:
         raise UnclearAudioError("Nutq topilmadi (faqat belgilar/emoji)")
     sentences = [x.strip().lower() for x in re.split(r"[.!?…\n]+", text) if x.strip()]
