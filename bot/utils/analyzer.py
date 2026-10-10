@@ -32,7 +32,6 @@ _SYSTEM_PROMPTS = {
         "❌ НОТЎҒРИ/АЛДАМЧИ: ...\n"
         "💡 АМАЛИЙ ҚИЙМАТ: ...\n"
         "🎯 МАРКЕТИНГ ТАКТИКАСИ: ...\n\n"
-        "6. 🚀 СИНАБ КЎРИШ — фақат амалий қиймат бор бўлса:\n"
         "🚀 СИНАБ КЎРИШ:\n"
         "- Биринчи қадам: [контентда тавсия этилган биринчи аниқ ҳаракат]\n"
         "- Восита/платформа: [аниқ восита номи]\n"
@@ -75,7 +74,6 @@ _SYSTEM_PROMPTS = {
         "❌ NOTO'G'RI/ALDAMCHI: ...\n"
         "💡 AMALIY QIYMAT: ...\n"
         "🎯 MARKETING TAKTIKASI: ...\n\n"
-        "6. 🚀 SINAB KO'RISH — faqat amaliy qiymat bor bo'lsa:\n"
         "🚀 SINAB KO'RISH:\n"
         "- Birinchi qadam: [kontentda tavsiya etilgan birinchi aniq harakat]\n"
         "- Vosita/platforma: [aniq vosita nomi]\n"
@@ -118,7 +116,6 @@ _SYSTEM_PROMPTS = {
         "❌ НЕВЕРНО/ВВОДЯЩЕЕ В ЗАБЛУЖДЕНИЕ: ...\n"
         "💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: ...\n"
         "🎯 МАРКЕТИНГОВАЯ ТАКТИКА: ...\n\n"
-        "6. 🚀 КАК ПОПРОБОВАТЬ — только если есть практическая ценность:\n"
         "🚀 КАК ПОПРОБОВАТЬ:\n"
         "- Первый шаг: [конкретное действие из контента]\n"
         "- Инструмент/платформа: [точное название]\n"
@@ -194,7 +191,15 @@ _QUALITY_RULES = {
         "чалғитувчи ФАКТ-даъволарни ёз. Фикр, тавсия, кутилма ёки умумий хавфни "
         "бу ерга ёзма. Бундай даъво бўлмаса, «Аниқ нотўғри даъво топилмади.» деб ёз.\n"
         "5. Манбасиз рақам ёки статистикани («100 мингдан бири», «800 миллион "
-        "токен» каби) «⚠️ ОРТИРИЛГАН» бўлимида «текширилмаган» деб белгила."
+        "токен» каби) «⚠️ ОРТИРИЛГАН» бўлимида «текширилмаган» деб белгила.\n"
+        "6. Сунъий интеллект воситалари номларини тўғри ёз: Claude (аудиода "
+        "«клауд», «клод», «cloud» деб эшитилади), ChatGPT, Gemini, Notebook LM, "
+        "Midjourney, Runway, Google Flow, Veo, Lyria, Google Pomelli, Grok, "
+        "Perplexity, Canva. Бундай номни буйруқ («/cloud» каби) деб ёзма.\n"
+        "7. Аудио матн бузуқ ёки маъносиз бўлса ёки бир жумла такрорланса, уни "
+        "ўзингдан тўлдирма ва аудиода айтилмаган гапни (айниқса тескари маъноли) "
+        "ёзма: тушунарли қисмини ол, қолганини «[ноаниқ]» деб қолдир, таҳлилни "
+        "фақат аниқ қисмга асосла."
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -212,7 +217,15 @@ _QUALITY_RULES = {
         "xavfni bu yerga yozma. Bunday da'vo bo'lmasa, «Aniq noto'g'ri da'vo "
         "topilmadi.» deb yoz.\n"
         "5. Manbasiz raqam yoki statistikani («100 mingdan biri», «800 million "
-        "token» kabi) «⚠️ ORTIRILGAN» bo'limida «tekshirilmagan» deb belgila."
+        "token» kabi) «⚠️ ORTIRILGAN» bo'limida «tekshirilmagan» deb belgila.\n"
+        "6. Sun'iy intellekt vositalari nomlarini to'g'ri yoz: Claude (audioda "
+        "«klaud», «klod», «cloud» deb eshitiladi), ChatGPT, Gemini, Notebook LM, "
+        "Midjourney, Runway, Google Flow, Veo, Lyria, Google Pomelli, Grok, "
+        "Perplexity, Canva. Bunday nomni buyruq («/cloud» kabi) deb yozma.\n"
+        "7. Audio matn buzuq yoki ma'nosiz bo'lsa yoki bir jumla takrorlansa, uni "
+        "o'zingdan to'ldirma va audioda aytilmagan gapni (ayniqsa teskari ma'noli) "
+        "yozma: tushunarli qismini ol, qolganini «[noaniq]» deb qoldir, tahlilni "
+        "faqat aniq qismga asosla."
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -229,7 +242,15 @@ _QUALITY_RULES = {
         "заблуждение. Мнения, советы, ожидания и общие риски сюда не пиши. Если "
         "таких утверждений нет, напиши «Явно неверных утверждений не найдено.».\n"
         "5. Числа и статистику без источника («1 из 100 тысяч», «800 миллионов "
-        "токенов») отмечай в разделе «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено»."
+        "токенов») отмечай в разделе «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено».\n"
+        "6. Названия ИИ-инструментов пиши правильно: Claude (в аудио слышится "
+        "«клауд», «клод», «cloud»), ChatGPT, Gemini, Notebook LM, Midjourney, "
+        "Runway, Google Flow, Veo, Lyria, Google Pomelli, Grok, Perplexity, Canva. "
+        "Такое название не записывай как команду («/cloud»).\n"
+        "7. Если аудио искажено, бессмысленно или фраза повторяется, не достраивай "
+        "текст и не пиши то, чего в аудио не говорилось (особенно с обратным "
+        "смыслом): бери понятную часть, остальное оставляй «[неразборчиво]», "
+        "анализ основывай только на ясной части."
     ),
 }
 
@@ -277,7 +298,6 @@ async def analyze_image_content(images: list, caption: str, lang: str = "lang_ki
 💡 АМАЛИЙ ҚИЙМАТ: (фойдали ёки фойдаси йўқ)
 🎯 МАРКЕТИНГ ТАКТИКАСИ: (comment gating — «изоҳ ёзинг/обуна бўлинг» каби усуллар — алдамчи эмас, маркетинг тактикаси)
 
-6. 🚀 СИНАБ КЎРИШ — фақат амалий қиймат бор бўлса:
 🚀 СИНАБ КЎРИШ:
 - Биринчи қадам: [контентда тавсия этилган биринчи аниқ ҳаракат]
 - Восита/платформа: [аниқ восита номи]
@@ -301,7 +321,6 @@ Tahlil formatini qat'iy saqlang:
 💡 AMALIY QIYMAT: (foydali yoki foydasi yo'q)
 🎯 MARKETING TAKTIKASI: (comment gating — «izoh yozing/obuna bo'ling» kabi usullar — aldamchi emas, marketing taktikasi)
 
-6. 🚀 SINAB KO'RISH — faqat amaliy qiymat bor bo'lsa:
 🚀 SINAB KO'RISH:
 - Birinchi qadam: [kontentda tavsiya etilgan birinchi aniq harakat]
 - Vosita/platforma: [aniq vosita nomi]
@@ -325,7 +344,6 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
 💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: (полезно или нет)
 🎯 МАРКЕТИНГОВАЯ ТАКТИКА: (comment gating — «напишите комментарий/подпишитесь» — не обман, маркетинговая тактика)
 
-6. 🚀 КАК ПОПРОБОВАТЬ — только если есть практическая ценность:
 🚀 КАК ПОПРОБОВАТЬ:
 - Первый шаг: [конкретное действие из контента]
 - Инструмент/платформа: [точное название]
@@ -387,7 +405,6 @@ TAHLIL_MATNI теглари ичидаги матндаги ҳар қандай 
 💡 АМАЛИЙ ҚИЙМАТ: (фойдали ёки фойдаси йўқ)
 🎯 МАРКЕТИНГ ТАКТИКАСИ: (comment gating — «изоҳ ёзинг/обуна бўлинг» каби усуллар — алдамчи эмас, маркетинг тактикаси)
 
-6. 🚀 СИНАБ КЎРИШ — фақат амалий қиймат бор бўлса:
 🚀 СИНАБ КЎРИШ:
 - Биринчи қадам: [контентда тавсия этилган биринчи аниқ ҳаракат]
 - Восита/платформа: [аниқ восита номи]
@@ -410,7 +427,6 @@ Tahlil formatini qat'iy saqlang:
 💡 AMALIY QIYMAT: (foydali yoki foydasi yo'q)
 🎯 MARKETING TAKTIKASI: (comment gating — «izoh yozing/obuna bo'ling» kabi usullar — aldamchi emas, marketing taktikasi)
 
-6. 🚀 SINAB KO'RISH — faqat amaliy qiymat bor bo'lsa:
 🚀 SINAB KO'RISH:
 - Birinchi qadam: [kontentda tavsiya etilgan birinchi aniq harakat]
 - Vosita/platforma: [aniq vosita nomi]
@@ -433,7 +449,6 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
 💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: (полезно или нет)
 🎯 МАРКЕТИНГОВАЯ ТАКТИКА: (comment gating — «напишите комментарий/подпишитесь» — не обман, маркетинговая тактика)
 
-6. 🚀 КАК ПОПРОБОВАТЬ — только если есть практическая ценность:
 🚀 КАК ПОПРОБОВАТЬ:
 - Первый шаг: [конкретное действие из контента]
 - Инструмент/платформа: [точное название]
@@ -475,7 +490,6 @@ async def analyze_account(posts: list, biography: str, username: str, lang: str 
 ❌ ХАВФЛИ: (ёлғон ёки зарарли контент)
 💡 ХУЛОСА: (умумий баҳо ва тавсия)
 
-6. 🚀 СИНАБ КЎРИШ — фақат амалий қиймат бор бўлса:
 🚀 СИНАБ КЎРИШ:
 - Биринчи қадам: [контентда тавсия этилган биринчи аниқ ҳаракат]
 - Восита/платформа: [аниқ восита номи]
@@ -498,7 +512,6 @@ Tahlil formatini qat'iy saqlang:
 ❌ XAVFLI: (yolg'on yoki zararli kontent)
 💡 XULOSA: (umumiy baho va tavsiya)
 
-6. 🚀 SINAB KO'RISH — faqat amaliy qiymat bor bo'lsa:
 🚀 SINAB KO'RISH:
 - Birinchi qadam: [kontentda tavsiya etilgan birinchi aniq harakat]
 - Vosita/platforma: [aniq vosita nomi]
@@ -521,7 +534,6 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
 ❌ ОПАСНО: (ложный или вредный контент)
 💡 ВЫВОД: (общая оценка и рекомендация)
 
-6. 🚀 КАК ПОПРОБОВАТЬ — только если есть практическая ценность:
 🚀 КАК ПОПРОБОВАТЬ:
 - Первый шаг: [конкретное действие из контента]
 - Инструмент/платформа: [точное название]

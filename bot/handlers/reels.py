@@ -41,6 +41,26 @@ COOKIE_ALERT_INTERVAL_SECONDS = 60 * 60
 _last_cookie_alert = 0.0
 
 
+def _split_message(text: str, limit: int = 4000) -> list:
+    """Uzun matnni qator chegarasidan bo'lib, so'z/qator o'rtasida uzilmasligini ta'minlaydi."""
+    parts = []
+    while len(text) > limit:
+        cut = text.rfind("\n", 0, limit)
+        if cut < limit // 2:
+            cut = text.rfind(" ", 0, limit)
+        if cut < limit // 2:
+            cut = limit
+        parts.append(text[:cut].rstrip())
+        text = text[cut:].lstrip("\n ")
+    parts.append(text)
+    return parts
+
+
+def _head_tail(text: str, limit: int = 4000):
+    parts = _split_message(text, limit)
+    return parts[0], "\n".join(parts[1:])
+
+
 async def notify_cookie_expired(
     message: Message, lang: str, source_type: str, error: Exception | None = None
 ) -> None:
@@ -682,8 +702,9 @@ async def handle_post(message: Message):
                 logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_post): user_id={message.from_user.id} url={url}")
 
         if len(result) > 4000:
-            await status_msg.edit_text(result[:4000])
-            await message.answer(result[4000:])
+            _head, _tail = _head_tail(result)
+            await status_msg.edit_text(_head)
+            await message.answer(_tail)
         else:
             await status_msg.edit_text(result)
 
@@ -838,8 +859,9 @@ async def handle_voice(message: Message):
         result_text = f"🔍 <b>Таҳлил натижаси:</b>\n\n{html.escape(analysis)}"
 
         if len(result_text) > 4000:
-            await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
-            await message.answer(result_text[4000:], parse_mode="HTML")
+            _head, _tail = _head_tail(result_text)
+            await status_msg.edit_text(_head, parse_mode="HTML")
+            await message.answer(_tail, parse_mode="HTML")
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
@@ -915,8 +937,8 @@ async def process_reel(message: Message, url: str):
     cached = cache_get(url, lang)
     if cached:
         logging.info(f"KESH: user_id={message.from_user.id} url={url}")
-        for i in range(0, len(cached), 4000):
-            await message.answer(cached[i:i + 4000], parse_mode="HTML")
+        for part in _split_message(cached):
+            await message.answer(part, parse_mode="HTML")
         stats.log_analysis(message.from_user.id, "instagram_reels", lang, "success", error_type="cache_hit")
         return
 
@@ -1029,8 +1051,9 @@ async def process_reel(message: Message, url: str):
         cache_put(url, lang, result_text)
 
         if len(result_text) > 4000:
-            await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
-            await message.answer(result_text[4000:], parse_mode="HTML")
+            _head, _tail = _head_tail(result_text)
+            await status_msg.edit_text(_head, parse_mode="HTML")
+            await message.answer(_tail, parse_mode="HTML")
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
@@ -1123,8 +1146,9 @@ async def handle_youtube(message: Message):
                 f"{html.escape(analysis)}"
             )
             if len(result_text) > 4000:
-                await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
-                await message.answer(result_text[4000:], parse_mode="HTML")
+                _head, _tail = _head_tail(result_text)
+                await status_msg.edit_text(_head, parse_mode="HTML")
+                await message.answer(_tail, parse_mode="HTML")
             else:
                 await status_msg.edit_text(result_text, parse_mode="HTML")
 
@@ -1224,8 +1248,9 @@ async def handle_youtube(message: Message):
         )
 
         if len(result_text) > 4000:
-            await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
-            await message.answer(result_text[4000:], parse_mode="HTML")
+            _head, _tail = _head_tail(result_text)
+            await status_msg.edit_text(_head, parse_mode="HTML")
+            await message.answer(_tail, parse_mode="HTML")
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 

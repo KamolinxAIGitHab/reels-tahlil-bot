@@ -100,4 +100,7 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
     # to'qiydi — harf deyarli bo'lmasa, nutq yo'q deb hisoblanadi.
     if sum(ch.isalpha() for ch in text) < 3:
         raise UnclearAudioError("Nutq topilmadi (faqat belgilar/emoji)")
+    sentences = [x.strip().lower() for x in re.split(r"[.!?…\n]+", text) if x.strip()]
+    if len(sentences) >= 4 and len(set(sentences)) / len(sentences) < 0.5:
+        raise UnclearAudioError("Transkripsiya takrorlanib ketgan (Whisper gallyutsinatsiyasi)")
     return text
