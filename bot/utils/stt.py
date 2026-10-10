@@ -40,11 +40,6 @@ def _probe_audio(file_path: str) -> tuple[Optional[float], Optional[float]]:
     return duration, mean_volume
 
 
-# Whisper o'zbekcha nutqni ba'zan boshqa turkiy til deb aniqlaydi (masalan,
-# qozoqcha) va shu tilda xato matn chiqaradi. Shunday aniqlansa, audio
-# o'zbek tili (uz) bilan qayta transkripsiya qilinadi.
-_UZBEK_MISDETECTED_LANGUAGES = {"kazakh", "kyrgyz", "tatar", "bashkir", "turkmen"}
-
 # gpt-4o-transcribe kabi boshqa modelni sinash uchun: STT_MODEL muhit o'zgaruvchisi
 STT_MODEL = os.getenv("STT_MODEL", "whisper-1")
 _PROMPT_MAX_CHARS = 600
@@ -88,14 +83,21 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
 
     # Til aniqlash faqat whisper-1 va til berilmagan holatda (verbose_json
     # faqat whisper-1'da mavjud)
+    # Eslatma: Whisper API "uz" tilini language parametri sifatida QABUL
+    # QILMAYDI (400 unsupported_language), shuning uchun o'zbekcha nutq
+    # avtomatik aniqlash bilan transkripsiya qilinadi. Whisper uni ba'zan
+    # qozoqcha/qirg'izcha deb belgilaydi — matn baribir GPT orqali
+    # o'zbekchaga tarjima qilinadi.
     detect = STT_MODEL == "whisper-1" and not language
     response = _call(language, detect)
 
     if detect:
         detected = (getattr(response, "language", None) or "").lower()
         logging.info(f"WHISPER TIL: {detected or 'noma`lum'}")
-        if detected in _UZBEK_MISDETECTED_LANGUAGES:
-            logging.info(f"Whisper tilni '{detected}' deb aniqladi — 'uz' bilan qayta urinilmoqda")
-            response = _call("uz", False)
 
-    return response.text
+    text = (response.text or "").strip()
+    # Musiqa/shovqin ustidan Whisper ba'zan faqat emoji yoki belgilar
+    # to'qiydi — harf deyarli bo'lmasa, nutq yo'q deb hisoblanadi.
+    if sum(ch.isalpha() for ch in text) < 3:
+        raise UnclearAudioError("Nutq topilmadi (faqat belgilar/emoji)")
+    return text
