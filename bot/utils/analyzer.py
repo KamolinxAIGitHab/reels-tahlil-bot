@@ -203,7 +203,11 @@ _QUALITY_RULES = {
         "8. Фақат ИЗОҲ матни таржима қилинмайди. АУДИО матни қайси тилда бўлмасин "
         "(рус, инглиз ва бошқа), уни албатта ўзбек кириллга таржима қил; аудио матни "
         "асл тилида қолса — бу хато.\n"
-        "9. Агар амалий қиймат бўлмаса, «СИНАБ КЎРИШ» бўлимини умуман ёзма (ҳатто «йўқ» деб ҳам)."
+        "9. Агар амалий қиймат бўлмаса, «СИНАБ КЎРИШ» бўлимини умуман ёзма (ҳатто «йўқ» деб ҳам).\n"
+        "10. Таҳлилнинг беш блокини (✅, ⚠️, ❌, 💡, 🎯) ҲАМИША ва айнан шу кўринишда, ҳар бирини алоҳида "
+        "қаторда ёз. Уларни умумий матн (проза) билан алмаштирма.\n"
+        "11. Аудиодаги бузилган сўз изоҳдаги сўзга товуш жиҳатидан ўхшаса (масалан, «кардайнка», "
+        "«корзина» ва Korzinka), изоҳдаги ёзувни ол."
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -233,7 +237,11 @@ _QUALITY_RULES = {
         "8. Faqat IZOH matni tarjima qilinmaydi. AUDIO matni qaysi tilda bo'lmasin "
         "(rus, ingliz, boshqa), uni albatta tanlangan tilga tarjima qil; audio matni "
         "asl tilida qolsa — bu xato.\n"
-        "9. Agar amaliy qiymat yo'q bo'lsa, «SINAB KO'RISH» bo'limini umuman yozma (hatto «yo'q» deb ham)."
+        "9. Agar amaliy qiymat yo'q bo'lsa, «SINAB KO'RISH» bo'limini umuman yozma (hatto «yo'q» deb ham).\n"
+        "10. Tahlilning besh blokini (✅, ⚠️, ❌, 💡, 🎯) HAMISHA va aynan shu ko'rinishda, har birini alohida "
+        "qatorda yoz. Ularni umumiy matn (proza) bilan almashtirma.\n"
+        "11. Audiodagi buzilgan so'z izohdagi so'zga tovush jihatidan o'xshasa (masalan, «kardaynka», "
+        "«korzina» va Korzinka), izohdagi yozuvni ol."
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -262,7 +270,11 @@ _QUALITY_RULES = {
         "8. Не переводится только ПОДПИСЬ. Текст АУДИО на любом языке (узбекском, "
         "английском, другом) обязательно переведи на русский; если аудио осталось "
         "на исходном языке — это ошибка.\n"
-        "9. Если практической ценности нет, раздел «КАК ПОПРОБОВАТЬ» не пиши вовсе (даже «нет»)."
+        "9. Если практической ценности нет, раздел «КАК ПОПРОБОВАТЬ» не пиши вовсе (даже «нет»).\n"
+        "10. Пять блоков анализа (✅, ⚠️, ❌, 💡, 🎯) ВСЕГДА пиши именно в этом виде, каждый с новой "
+        "строки. Не заменяй их сплошным текстом.\n"
+        "11. Если искажённое слово в аудио созвучно слову из подписи (например, «кардайнка», "
+        "«корзина» и Korzinka), бери написание из подписи."
     ),
 }
 
