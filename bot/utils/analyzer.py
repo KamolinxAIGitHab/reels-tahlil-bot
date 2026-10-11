@@ -207,7 +207,10 @@ _QUALITY_RULES = {
         "10. Таҳлилнинг беш блокини (✅, ⚠️, ❌, 💡, 🎯) ҲАМИША ва айнан шу кўринишда, ҳар бирини алоҳида "
         "қаторда ёз. Уларни умумий матн (проза) билан алмаштирма.\n"
         "11. Аудиодаги бузилган сўз изоҳдаги сўзга товуш жиҳатидан ўхшаса (масалан, «кардайнка», "
-        "«корзина» ва Korzinka), изоҳдаги ёзувни ол."
+        "«корзина» ва Korzinka), изоҳдаги ёзувни ол.\n"
+        "12. Кирилл ёзувидаги матнда лотин ҳарфларни (g, a ва ш.к.) ишлатма; бренд ва техник атамалардан ташқари барча сўзларни кирилда ёз.\n"
+        "13. Таржимада мана бу атамаларни ишлат: retention/удержание — «томошабинни ушлаб туриш»; ссылка — «ҳавола»; гайд — «қўлланма»; залететь/виралиться — «оммабоп бўлиб кетиш»; промпт — «промпт»; трафик — «трафик»; воронка продаж — «сотув воронкаси».\n"
+        "14. Матн жуда қисқа бўлса ҳам, мавжуд матнни транскрипция сифатида кўрсат ва беш блокни тўлдир; «етарли маълумот йўқ» деб умумий рад жавоби ёзма."
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -241,7 +244,9 @@ _QUALITY_RULES = {
         "10. Tahlilning besh blokini (✅, ⚠️, ❌, 💡, 🎯) HAMISHA va aynan shu ko'rinishda, har birini alohida "
         "qatorda yoz. Ularni umumiy matn (proza) bilan almashtirma.\n"
         "11. Audiodagi buzilgan so'z izohdagi so'zga tovush jihatidan o'xshasa (masalan, «kardaynka», "
-        "«korzina» va Korzinka), izohdagi yozuvni ol."
+        "«korzina» va Korzinka), izohdagi yozuvni ol.\n"
+        "12. Atamalarni shunday tarjima qil: retention/удержание — «tomoshabinni ushlab turish»; ссылка — «havola»; гайд — «qo'llanma»; залететь/виралиться — «ommabop bo'lib ketish»; воронка продаж — «sotuv voronkasi».\n"
+        "13. Matn juda qisqa bo'lsa ham, mavjud matnni «Transkripsiya» bo'limida ko'rsat va besh blokni to'ldir; «yetarli ma'lumot yo'q» deb umumiy rad javobi yozma."
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -274,7 +279,8 @@ _QUALITY_RULES = {
         "10. Пять блоков анализа (✅, ⚠️, ❌, 💡, 🎯) ВСЕГДА пиши именно в этом виде, каждый с новой "
         "строки. Не заменяй их сплошным текстом.\n"
         "11. Если искажённое слово в аудио созвучно слову из подписи (например, «кардайнка», "
-        "«корзина» и Korzinka), бери написание из подписи."
+        "«корзина» и Korzinka), бери написание из подписи.\n"
+        "12. Даже если текст очень короткий, покажи его в разделе транскрипции и заполни пять блоков; не пиши общий отказ вида «недостаточно информации»."
     ),
 }
 
