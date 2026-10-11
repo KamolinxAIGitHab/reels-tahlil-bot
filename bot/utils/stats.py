@@ -106,7 +106,7 @@ def get_stats() -> dict:
         today_error = count(" WHERE date(timestamp, '+5 hours') = date('now', '+5 hours') AND status = 'error'")
 
         today_error_types = {}
-        tracked_errors = ("instagram_limit", "openai_credit", "moderation")
+        tracked_errors = ("instagram_limit", "cookie_expired", "openai_credit", "moderation")
         for et in tracked_errors:
             today_error_types[et] = count(
                 " WHERE date(timestamp, '+5 hours') = date('now', '+5 hours') AND status = 'error' AND error_type = ?",

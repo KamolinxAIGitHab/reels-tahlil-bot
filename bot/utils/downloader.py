@@ -63,11 +63,35 @@ _RATE_LIMIT_MARKERS = (
     "wait a few minutes",
 )
 
-# Cookie yaroqsiz deb topilgach, shu vaqt davomida Instagram'ga cookie bilan
-# so'rov yuborilmaydi (faqat anonim urinish qilinadi) — o'lik cookie bilan
-# qayta-qayta so'rov yuborish akkauntni xavf ostiga qo'yadi.
-COOKIE_COOLDOWN_SECONDS = 15 * 60
+# Cookie yaroqsiz deb topilgach, shu vaqt davomida Instagram'ga umuman
+# so'rov yuborilmaydi — o'lik cookie bilan qayta-qayta so'rov yuborish
+# akkauntni xavf ostiga qo'yadi (yangi cookie qo'yilganda bot qayta
+# ishga tushadi va holat tozalanadi).
+COOKIE_COOLDOWN_SECONDS = 30 * 60
 _cookie_dead_until = 0.0
+
+# Instagram'ga barcha so'rovlar navbat bilan yuboriladi (bir vaqtda bittadan),
+# ketma-ket so'rovlar orasida kamida shuncha soniya kutiladi — server IP'dan
+# bir zumda ko'p so'rov yuborish 429 cheklovini tezlashtiradi.
+INSTAGRAM_MIN_GAP_SECONDS = 20
+_instagram_lock = None
+_instagram_last_end = 0.0
+
+
+class _InstagramGate:
+    async def __aenter__(self):
+        global _instagram_lock
+        if _instagram_lock is None:
+            _instagram_lock = asyncio.Lock()
+        await _instagram_lock.acquire()
+        wait = INSTAGRAM_MIN_GAP_SECONDS - (time.monotonic() - _instagram_last_end)
+        if wait > 0:
+            await asyncio.sleep(wait)
+
+    async def __aexit__(self, *exc):
+        global _instagram_last_end
+        _instagram_last_end = time.monotonic()
+        _instagram_lock.release()
 
 
 def cookie_in_cooldown() -> bool:
@@ -138,7 +162,14 @@ def _build_ydl_opts(tmp_dir: str, use_cookies: bool = True) -> dict:
     if not use_cookies:
         return opts
     if _COOKIES_FILE:
-        opts["cookiefile"] = _COOKIES_FILE
+        # Har so'rov uchun alohida nusxa: yt-dlp cookie faylni qayta yozadi,
+        # parallel so'rovlar umumiy faylni buzmasligi uchun.
+        local_copy = os.path.join(tmp_dir, "cookies.txt")
+        try:
+            shutil.copyfile(_COOKIES_FILE, local_copy)
+            opts["cookiefile"] = local_copy
+        except OSError:
+            opts["cookiefile"] = _COOKIES_FILE
     elif INSTAGRAM_USER and INSTAGRAM_PASS:
         opts["username"] = INSTAGRAM_USER
         opts["password"] = INSTAGRAM_PASS
@@ -221,36 +252,33 @@ async def download_reels_audio(url: str):
 
     def _download():
         has_cookie_source = bool(_COOKIES_FILE or (INSTAGRAM_USER and INSTAGRAM_PASS))
-        used_cookie = False
-        caption = ""
 
-        if has_cookie_source and not cookie_in_cooldown():
-            used_cookie = True
+        if has_cookie_source and cookie_in_cooldown():
+            # Cookie yaqinda yaroqsiz deb topilgan — Instagram'ga so'rov yubormaymiz
+            raise CookieExpiredError("Instagram cookie yaroqsiz (cooldown)")
+
+        def _extract_with_retry() -> str:
             try:
-                caption = _extract(True)
+                return _extract(has_cookie_source)
             except Exception as e:
-                if not _is_cookie_expired(e):
-                    if _is_private_content(e):
-                        raise PrivateContentError("Instagram kontenti xususiy (private)") from e
-                    raise
-                # Cookie yaroqsiz: belgilab qo'yamiz va bir marta anonim urinamiz
-                logging.error(f"Instagram cookie xatosi (video yuklashda): {e}")
-                _mark_cookie_dead()
-                used_cookie = False
-                try:
-                    caption = _extract(False)
-                except Exception:
-                    raise CookieExpiredError("Instagram cookie eskirgan (video yuklashda)") from e
-        else:
-            # Cookie yo'q yoki 'o'lik' deb belgilangan — faqat anonim urinish
-            try:
-                caption = _extract(False)
-            except Exception as e:
-                if _is_cookie_expired(e) or has_cookie_source:
-                    raise CookieExpiredError("Instagram cookie yaroqsiz (anonim urinish ham o'tmadi)") from e
-                if _is_private_content(e):
-                    raise PrivateContentError("Instagram kontenti xususiy (private)") from e
+                if is_rate_limited(e) and not _is_cookie_expired(e):
+                    logging.warning("Instagram 429 — 25 soniya kutib, bir marta qayta uriniladi")
+                    time.sleep(25)
+                    return _extract(has_cookie_source)
                 raise
+
+        used_cookie = has_cookie_source
+        try:
+            caption = _extract_with_retry()
+        except Exception as e:
+            if _is_cookie_expired(e):
+                logging.error(f"Instagram cookie xatosi (video yuklashda): {e}")
+                if has_cookie_source:
+                    _mark_cookie_dead()
+                raise CookieExpiredError("Instagram cookie eskirgan (video yuklashda)") from e
+            if _is_private_content(e):
+                raise PrivateContentError("Instagram kontenti xususiy (private)") from e
+            raise
 
         video_path = None
         for f in os.listdir(tmp_dir):
@@ -277,7 +305,8 @@ async def download_reels_audio(url: str):
         return audio_path, caption, used_cookie
 
     try:
-        return await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=90)
+        async with _InstagramGate():
+            return await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=150)
     except BaseException:
         # Xato bo'lsa, yarim yuklangan fayllar diskda qolib ketmasin
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -503,7 +532,8 @@ async def download_instagram_image(url: str):
         return images, caption
 
     try:
-        return await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=45)
+        async with _InstagramGate():
+            return await asyncio.wait_for(loop.run_in_executor(None, _download), timeout=45)
     except BaseException:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise

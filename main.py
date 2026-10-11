@@ -9,6 +9,12 @@ from bot.handlers import reels
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
+logging.basicConfig(
+    level=logging.INFO,
+    stream=sys.stdout,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+
 async def main():
     bot = Bot(token=settings.bot_token)
     dp = Dispatcher()
@@ -21,7 +27,6 @@ async def main():
         BotCommand(command="stats", description="Статистика"),
     ])
 
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

@@ -3,8 +3,8 @@ load_dotenv()
 from openai import OpenAI, AsyncOpenAI
 from bot.config import settings
 
-client = OpenAI(api_key=settings.openai_api_key)
-async_client = AsyncOpenAI(api_key=settings.openai_api_key)
+client = OpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
+async_client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
 
 _SYSTEM_PROMPTS = {
     "lang_kirill": (

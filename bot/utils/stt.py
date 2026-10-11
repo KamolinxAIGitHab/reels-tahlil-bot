@@ -7,7 +7,7 @@ from typing import Optional
 from openai import OpenAI
 from bot.config import settings
 
-client = OpenAI(api_key=settings.openai_api_key)
+client = OpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
 
 MIN_DURATION_SECONDS = 1.5
 MIN_MEAN_VOLUME_DB = -40.0
