@@ -210,7 +210,9 @@ _QUALITY_RULES = {
         "«корзина» ва Korzinka), изоҳдаги ёзувни ол.\n"
         "12. Кирилл ёзувидаги матнда лотин ҳарфларни (g, a ва ш.к.) ишлатма; бренд ва техник атамалардан ташқари барча сўзларни кирилда ёз.\n"
         "13. Таржимада мана бу атамаларни ишлат: retention/удержание — «томошабинни ушлаб туриш»; ссылка — «ҳавола»; гайд — «қўлланма»; залететь/виралиться — «оммабоп бўлиб кетиш»; промпт — «промпт»; трафик — «трафик»; воронка продаж — «сотув воронкаси».\n"
-        "14. Матн жуда қисқа бўлса ҳам, мавжуд матнни транскрипция сифатида кўрсат ва беш блокни тўлдир; «етарли маълумот йўқ» деб умумий рад жавоби ёзма."
+        "14. Матн жуда қисқа бўлса ҳам, мавжуд матнни транскрипция сифатида кўрсат ва беш блокни тўлдир; «етарли маълумот йўқ» деб умумий рад жавоби ёзма.\n"
+        "15. Claude номини ҳар доим «Claude» деб ёз («Клод», «клод» ёзма). Рақамларни ва сўзларни фигурали қавс {} ичига олма.\n"
+        "16. Изоҳ матнини (caption) аслидаги ёзув ва ҳарфларда айнан қолдир: уни таржима қилма ва бошқа ёзувга ўгирма."
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -246,7 +248,9 @@ _QUALITY_RULES = {
         "11. Audiodagi buzilgan so'z izohdagi so'zga tovush jihatidan o'xshasa (masalan, «kardaynka», "
         "«korzina» va Korzinka), izohdagi yozuvni ol.\n"
         "12. Atamalarni shunday tarjima qil: retention/удержание — «tomoshabinni ushlab turish»; ссылка — «havola»; гайд — «qo'llanma»; залететь/виралиться — «ommabop bo'lib ketish»; воронка продаж — «sotuv voronkasi».\n"
-        "13. Matn juda qisqa bo'lsa ham, mavjud matnni «Transkripsiya» bo'limida ko'rsat va besh blokni to'ldir; «yetarli ma'lumot yo'q» deb umumiy rad javobi yozma."
+        "13. Matn juda qisqa bo'lsa ham, mavjud matnni «Transkripsiya» bo'limida ko'rsat va besh blokni to'ldir; «yetarli ma'lumot yo'q» deb umumiy rad javobi yozma.\n"
+        "14. Claude nomini har doim «Claude» deb yoz («Klod», «Klaud» yozma). Raqam va so'zlarni figurali qavs {} ichiga olma.\n"
+        "15. Izoh matnini (caption) asl yozuvi va harflarida aynan qoldir: uni tarjima qilma va lotin harfiga transliteratsiya qilma."
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -280,7 +284,8 @@ _QUALITY_RULES = {
         "строки. Не заменяй их сплошным текстом.\n"
         "11. Если искажённое слово в аудио созвучно слову из подписи (например, «кардайнка», "
         "«корзина» и Korzinka), бери написание из подписи.\n"
-        "12. Даже если текст очень короткий, покажи его в разделе транскрипции и заполни пять блоков; не пиши общий отказ вида «недостаточно информации»."
+        "12. Даже если текст очень короткий, покажи его в разделе транскрипции и заполни пять блоков; не пиши общий отказ вида «недостаточно информации».\n"
+        "13. Название Claude всегда пиши как «Claude» (не «Клод», «Клауд»). Не заключай числа и слова в фигурные скобки {}."
     ),
 }
 
