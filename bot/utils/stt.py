@@ -41,7 +41,8 @@ def _probe_audio(file_path: str) -> tuple[Optional[float], Optional[float]]:
 
 
 # gpt-4o-transcribe kabi boshqa modelni sinash uchun: STT_MODEL muhit o'zgaruvchisi
-STT_MODEL = os.getenv("STT_MODEL", "whisper-1")
+# Ўзбек нутқи учун синовда gpt-4o-mini-transcribe gpt-4o-transcribe ва whisper-1 дан аниқроқ чиқди
+STT_MODEL = os.getenv("STT_MODEL", "gpt-4o-mini-transcribe")
 _PROMPT_MAX_CHARS = 600
 
 # O'zbekcha nutq til berilmaganda ba'zan boshqa tur (masalan, ozarbayjon)
@@ -49,7 +50,8 @@ _PROMPT_MAX_CHARS = 600
 # lekin rus/ingliz nutqni majburan o'zgartirmaydi. STT_HINT=0 bilan o'chiriladi.
 _LANG_HINT = "Nutq o'zbek, rus yoki ingliz tilida bo'lishi mumkin. O'zbekcha bo'lsa, o'zbek lotin imlosida yozing: o', g', sh, ch."
 _LANG_HINT_MARK = "lotin imlosida"
-_USE_HINT = os.getenv("STT_HINT", "1") != "0"
+# Синовда кўрсатмасиз вариант энг барқарор чиққани учун кўрсатма ўчирилган; STT_HINT=1 билан ёқилади
+_USE_HINT = os.getenv("STT_HINT", "0") == "1"
 
 
 def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Optional[str] = None) -> str:
@@ -73,11 +75,10 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
     except Exception as e:
         logging.warning(f"Audio tekshiruvi muvaffaqiyatsiz, davom etilmoqda: {e}")
 
-    def _call(lang: Optional[str], want_language: bool):
-        params = {
-            "model": STT_MODEL,
-            "temperature": 0,
-        }
+    def _call(lang: Optional[str], want_language: bool, use_temperature: bool = True):
+        params = {"model": STT_MODEL}
+        if use_temperature:
+            params["temperature"] = 0
         if lang:
             params["language"] = lang
         # Prompt'ning oxirgi qismi muhimroq: ko'rsatma oxirida turadi
@@ -99,7 +100,14 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
     # qozoqcha/qirg'izcha deb belgilaydi — matn baribir GPT orqali
     # o'zbekchaga tarjima qilinadi.
     detect = STT_MODEL == "whisper-1" and not language
-    response = _call(language, detect)
+    try:
+        response = _call(language, detect)
+    except Exception as e:
+        # Баъзи моделлар temperature параметрини қабул қилмаслиги мумкин: шунда уни олиб ташлаб қайтамиз
+        if "temperature" not in str(e).lower():
+            raise
+        logging.warning(f"STT temperature параметрисиз қайта уриниш: {e}")
+        response = _call(language, detect, use_temperature=False)
 
     if detect:
         detected = (getattr(response, "language", None) or "").lower()
@@ -115,4 +123,7 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
     sentences = [x.strip().lower() for x in re.split(r"[.!?…\n]+", text) if x.strip()]
     if len(sentences) >= 4 and len(set(sentences)) / len(sentences) < 0.5:
         raise UnclearAudioError("Transkripsiya takrorlanib ketgan (Whisper gallyutsinatsiyasi)")
+    # Битта жумла ичида ҳам бир бўлак ўнлаб марта такрорланса («qəqəqə…»), бу галлюцинация
+    if re.search(r"(.{1,8}?)\1{9,}", text):
+        raise UnclearAudioError("Transkripsiya takrorlanib ketgan (uzun takror)")
     return text
