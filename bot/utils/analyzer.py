@@ -195,7 +195,7 @@ _QUALITY_RULES = {
         "6. Сунъий интеллект воситалари номларини тўғри ёз: Claude (аудиода "
         "«клауд», «клод», «cloud» деб эшитилади), ChatGPT, Gemini, Notebook LM, "
         "Midjourney, Runway, Google Flow, Veo, Lyria, Google Pomelli, Grok, "
-        "Perplexity, Canva. Бундай номни буйруқ («/cloud» каби) деб ёзма.\n"
+        "Perplexity, Canva, Firecrawl, Playwright, Composio, MCP, n8n, Zapier, Notion, Cursor. Бундай номни буйруқ («/cloud» каби) деб ёзма.\n"
         "7. Аудио матн бузуқ ёки маъносиз бўлса ёки бир жумла такрорланса, уни "
         "ўзингдан тўлдирма ва аудиода айтилмаган гапни (айниқса тескари маъноли) "
         "ёзма: тушунарли қисмини ол, қолганини «[ноаниқ]» деб қолдир, таҳлилни "
@@ -215,7 +215,8 @@ _QUALITY_RULES = {
         "16. Изоҳ матнини (caption) аслидаги ёзув ва ҳарфларда айнан қолдир: уни таржима қилма ва бошқа ёзувга ўгирма.\n"
         "17. Instagram Reels ни ҳамма вақт «Reels» деб ёз («рейс», «рол», «рилс» ёзма); чат-ботни «чат-бот» деб ёз («аудиочат» ёзма).\n"
         "18. Агар «💡 АМАЛИЙ ҚИЙМАТ» да «Бор ✓» деб ёзсанг, «🚀 СИНАБ КЎРИШ» бўлими МАЖБУРИЙ: биринчи қадам, восита ва вақтни кўрсат. «Бор ✓» ни фақат видеода ҳақиқатан кўрсатилган аниқ қадам ёки восита бўлсагина қўй; фақат ваъда ва даъво бўлса — «Йўқ ✗».\n"
-        "19. Видеода шахсий даромад, сотув ёки обуначи натижалари айтилса («555 минг рубл», «10 минг обуначи»), уларни «⚠️ ОРТИРИЛГАН» да «текширилмаган» деб белгила. Видеонинг мақсади курс ёки хизматни сотиш бўлса (кодли сўзга «совға» ваъдаси, «директга ёзинг» каби), «🎯 МАРКЕТИНГ ТАКТИКАСИ» да буни очиқ «реклама ва сотув воронкаси» деб ёз."
+        "19. Видеода шахсий даромад, сотув ёки обуначи натижалари айтилса («555 минг рубл», «10 минг обуначи»), уларни «⚠️ ОРТИРИЛГАН» да «текширилмаган» деб белгила. Видеонинг мақсади курс ёки хизматни сотиш бўлса (кодли сўзга «совға» ваъдаси, «директга ёзинг» каби), «🎯 МАРКЕТИНГ ТАКТИКАСИ» да буни очиқ «реклама ва сотув воронкаси» деб ёз.\n"
+        "20. Видеода ҳуқуқий даъво («бу қонуний», «рухсат этилган»), нарх, миқдор ёки ҳажм рақамлари («300 дан ортиқ илова», «ойига 20 доллар») айтилса, уларни «⚠️ ОРТИРИЛГАН» да алоҳида «текширилмаган» деб санаб ўт. Бу блокни умумий гап билан тўлдирма: аниқ ибора ёки рақамни келтир. Аудиода «МСП» ёки «эм-си-пи» деб эшитилса, «MCP» деб ёз."
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -237,7 +238,7 @@ _QUALITY_RULES = {
         "6. Sun'iy intellekt vositalari nomlarini to'g'ri yoz: Claude (audioda "
         "«klaud», «klod», «cloud» deb eshitiladi), ChatGPT, Gemini, Notebook LM, "
         "Midjourney, Runway, Google Flow, Veo, Lyria, Google Pomelli, Grok, "
-        "Perplexity, Canva. Bunday nomni buyruq («/cloud» kabi) deb yozma.\n"
+        "Perplexity, Canva, Firecrawl, Playwright, Composio, MCP, n8n, Zapier, Notion, Cursor. Bunday nomni buyruq («/cloud» kabi) deb yozma.\n"
         "7. Audio matn buzuq yoki ma'nosiz bo'lsa yoki bir jumla takrorlansa, uni "
         "o'zingdan to'ldirma va audioda aytilmagan gapni (ayniqsa teskari ma'noli) "
         "yozma: tushunarli qismini ol, qolganini «[noaniq]» deb qoldir, tahlilni "
@@ -256,7 +257,8 @@ _QUALITY_RULES = {
         "15. Izoh matnini (caption) asl yozuvi va harflarida aynan qoldir: uni tarjima qilma va lotin harfiga transliteratsiya qilma.\n"
         "16. Instagram Reels ni har doim «Reels» deb yoz («reys», «rol», «rils» yozma); chat-botni «chat-bot» deb yoz («audiochat» yozma).\n"
         "17. Agar «💡 AMALIY QIYMAT» da «Bor ✓» deb yozsang, «🚀 SINAB KO'RISH» bo'limi MAJBURIY: birinchi qadam, vosita va vaqtni ko'rsat. «Bor ✓» ni faqat videoda haqiqatan ko'rsatilgan aniq qadam yoki vosita bo'lsagina qo'y; faqat va'da va da'vo bo'lsa — «Yo'q ✗».\n"
-        "18. Videoda shaxsiy daromad, sotuv yoki obunachi natijalari aytilsa («555 ming rubl», «10 ming obunachi»), ularni «⚠️ ORTIRILGAN» bo'limida «tekshirilmagan» deb belgila. Video maqsadi kurs yoki xizmat sotish bo'lsa (kod so'zga «sovg'a» va'dasi, «direktga yozing» kabi), «🎯 MARKETING TAKTIKASI» da buni ochiq «reklama va sotuv voronkasi» deb yoz."
+        "18. Videoda shaxsiy daromad, sotuv yoki obunachi natijalari aytilsa («555 ming rubl», «10 ming obunachi»), ularni «⚠️ ORTIRILGAN» bo'limida «tekshirilmagan» deb belgila. Video maqsadi kurs yoki xizmat sotish bo'lsa (kod so'zga «sovg'a» va'dasi, «direktga yozing» kabi), «🎯 MARKETING TAKTIKASI» da buni ochiq «reklama va sotuv voronkasi» deb yoz.\n"
+        "19. Videoda huquqiy da'vo («bu qonuniy», «ruxsat etilgan»), narx, miqdor yoki hajm raqamlari («300 dan ortiq ilova», «oyiga 20 dollar») aytilsa, ularni «⚠️ ORTIRILGAN» da alohida «tekshirilmagan» deb sanab o't. Bu blokni umumiy gap bilan to'ldirma: aniq ibora yoki raqamni keltir. Audioda «MSP» yoki «em-si-pi» deb eshitilsa, «MCP» deb yoz."
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -276,7 +278,7 @@ _QUALITY_RULES = {
         "токенов») отмечай в разделе «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено».\n"
         "6. Названия ИИ-инструментов пиши правильно: Claude (в аудио слышится "
         "«клауд», «клод», «cloud»), ChatGPT, Gemini, Notebook LM, Midjourney, "
-        "Runway, Google Flow, Veo, Lyria, Google Pomelli, Grok, Perplexity, Canva. "
+        "Runway, Google Flow, Veo, Lyria, Google Pomelli, Grok, Perplexity, Canva, Firecrawl, Playwright, Composio, MCP, n8n, Zapier, Notion, Cursor. "
         "Такое название не записывай как команду («/cloud»).\n"
         "7. Если аудио искажено, бессмысленно или фраза повторяется, не достраивай "
         "текст и не пиши то, чего в аудио не говорилось (особенно с обратным "
@@ -294,7 +296,8 @@ _QUALITY_RULES = {
         "13. Название Claude всегда пиши как «Claude» (не «Клод», «Клауд»). Не заключай числа и слова в фигурные скобки {}.\n"
         "14. Instagram Reels всегда пиши как «Reels» (не «рейсы», не «ролы»); чат-бот пиши как «чат-бот».\n"
         "15. Если в «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» пишешь «Есть ✓», раздел «🚀 КАК ПОПРОБОВАТЬ» ОБЯЗАТЕЛЕН: первый шаг, инструмент и время. «Есть ✓» ставь только если в видео реально показаны конкретные шаги или инструмент; если только обещания и заявления — «Нет ✗».\n"
-        "16. Если в видео названы личные доходы, продажи или результаты по подписчикам («555 тысяч рублей», «10 тысяч подписчиков»), отмечай их в «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено». Если цель видео — продать курс или услугу (обещание «подарка» за кодовое слово, «пиши в директ»), прямо назови это рекламой и воронкой продаж в «🎯 МАРКЕТИНГОВАЯ ТАКТИКА»."
+        "16. Если в видео названы личные доходы, продажи или результаты по подписчикам («555 тысяч рублей», «10 тысяч подписчиков»), отмечай их в «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено». Если цель видео — продать курс или услугу (обещание «подарка» за кодовое слово, «пиши в директ»), прямо назови это рекламой и воронкой продаж в «🎯 МАРКЕТИНГОВАЯ ТАКТИКА».\n"
+        "17. Если в видео звучат правовые утверждения («это законно», «разрешено»), цены, количества или объёмы («более 300 приложений», «20 долларов в месяц»), перечисли их отдельно в «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено». Не заполняй этот блок общими фразами: приводи конкретную фразу или число. Если в аудио слышится «МСП» или «эм-си-пи», пиши «MCP»."
     ),
 }
 
@@ -310,6 +313,47 @@ def _clean_cyrillic(text: str, lang: str) -> str:
 
 
 
+_ANALYSIS_TEMPERATURE = 0.3
+
+# «Амалий қиймат: Бор» белгиси ва мажбурий «синаб кўриш» блоки (тил бўйича)
+_TRY_BLOCK = {
+    "lang_kirill": ("Бор ✓", "🚀 СИНАБ КЎРИШ:",
+                    "«💡 АМАЛИЙ ҚИЙМАТ» да «Бор ✓» деб ёзилган, лекин «🚀 СИНАБ КЎРИШ:» бўлими йўқ. "
+                    "Фақат шу бўлимни ёз: сарлавҳа «🚀 СИНАБ КЎРИШ:», кейин уч банд — «- Биринчи қадам:», "
+                    "«- Восита/платформа:», «- Вақт:». Бошқа ҳеч нарса ёзма."),
+    "lang_lotin": ("Bor ✓", "🚀 SINAB KO'RISH:",
+                   "«💡 AMALIY QIYMAT» da «Bor ✓» deb yozilgan, lekin «🚀 SINAB KO'RISH:» bo'limi yo'q. "
+                   "Faqat shu bo'limni yoz: sarlavha «🚀 SINAB KO'RISH:», keyin uch band — «- Birinchi qadam:», "
+                   "«- Vosita/platforma:», «- Vaqt:». Boshqa hech narsa yozma."),
+    "lang_rus": ("Есть ✓", "🚀 КАК ПОПРОБОВАТЬ:",
+                 "В «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» стоит «Есть ✓», но раздела «🚀 КАК ПОПРОБОВАТЬ:» нет. "
+                 "Напиши только этот раздел: заголовок «🚀 КАК ПОПРОБОВАТЬ:», затем три пункта — "
+                 "«- Первый шаг:», «- Инструмент/платформа:», «- Время:». Больше ничего не пиши."),
+}
+
+
+def _ensure_try_block(result: str, lang: str, messages: list, model: str) -> str:
+    """Амалий қиймат «Бор» бўлса-ю, «синаб кўриш» блоки тушиб қолган бўлса,
+    фақат шу блокни бир марта сўраб, жавобга қўшади. Хато бўлса, асл жавоб қайтади."""
+    marker, header, followup = _TRY_BLOCK.get(lang, _TRY_BLOCK["lang_kirill"])
+    if not result or marker not in result or "🚀" in result:
+        return result
+    try:
+        extra = client.chat.completions.create(
+            model=model,
+            messages=messages + [
+                {"role": "assistant", "content": result},
+                {"role": "user", "content": followup},
+            ],
+            temperature=_ANALYSIS_TEMPERATURE,
+        ).choices[0].message.content.strip()
+    except Exception:
+        return result
+    if extra.startswith(header):
+        return result.rstrip() + "\n\n" + extra
+    return result
+
+
 def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o") -> str:
     """Transkripsiya matnini (Reels ovozi yoki ovozli xabar) tanlangan
     tilga tarjima qilib, texnik to'g'rilik/amaliy qiymat bo'yicha
@@ -320,15 +364,15 @@ def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o")
     )
     user_prompt = _USER_PROMPTS.get(lang, _USER_PROMPTS["lang_kirill"]).format(text=text)
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_prompt},
-        ]
-    )
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user",   "content": user_prompt},
+    ]
+    response = client.chat.completions.create(model=model, messages=messages, temperature=_ANALYSIS_TEMPERATURE)
+    result = response.choices[0].message.content
+    result = _ensure_try_block(result, lang, messages, model)
 
-    return _clean_cyrillic(response.choices[0].message.content, lang)
+    return _clean_cyrillic(result, lang)
 
 
 async def analyze_image_content(images: list, caption: str, lang: str = "lang_kirill", model: str = "gpt-4o") -> str:
