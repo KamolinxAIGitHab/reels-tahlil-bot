@@ -254,6 +254,15 @@ _REFUSAL_PATTERNS = (
     "i am unable to help", "i won't be able to help", "i'm not able to help",
     "against our content policy", "against openai's usage policies",
     "violates our usage policies", "i can't provide", "i cannot provide",
+    # Ruscha rad javoblar
+    "не могу помочь", "не могу выполнить", "не могу проанализировать",
+    "не могу анализировать", "не могу предоставить",
+    # O'zbekcha (kirill) rad javoblar
+    "ёрдам бера олмайман", "таҳлил қила олмайман", "бажара олмайман",
+    "ўзбек тилида эмас",
+    # O'zbekcha (lotin) rad javoblar
+    "yordam bera olmayman", "tahlil qila olmayman", "bajara olmayman",
+    "o'zbek tilida emas",
 )
 
 
@@ -265,7 +274,11 @@ def is_moderation_refusal(text: str | None) -> bool:
     if not text:
         return False
     lowered = text.lower()
-    return any(p in lowered for p in _REFUSAL_PATTERNS)
+    if any(p in lowered for p in _REFUSAL_PATTERNS):
+        return True
+    # Oddiy tahlilda doim "💡" (amaliy qiymat) qatori bo'ladi;
+    # u yo'q va javob qisqa bo'lsa — bu rad javobi.
+    return "💡" not in text and len(text.strip()) < 300
 
 
 async def handle_openai_error(
