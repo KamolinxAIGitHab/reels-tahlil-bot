@@ -33,13 +33,13 @@ UZ_PROMPT_EN = "The audio is in the Uzbek language. Transcribe it in standard Uz
 UZ_PROMPT_UZ = "Bu o'zbek tilidagi nutq. O'zbek lotin alifbosida yozing: o', g', sh, ch, x, q, h."
 UZ_PROMPT_CYR = "Бу ўзбек тилидаги нутқ. Ўзбек кирилл алифбосида ёзинг: ў, қ, ғ, ҳ, ш, ч."
 
+UZ_PROMPT_MIXED = "The audio may be in Uzbek, Russian or English. If it is Uzbek, transcribe it in standard Uzbek Latin orthography (o', g', sh, ch, x, q, h), not Azerbaijani or Turkish spelling. If it is Russian or English, transcribe it normally."
+
 OPENAI_VARIANTS = [
-    ("A whisper-1 | авто + кўрсатма (қозоқча чиқиши мумкин)", "whisper-1", None, HINT),
-    ("B gpt-4o-transcribe | авто + кўрсатма (ҳозирги бот)", "gpt-4o-transcribe", None, HINT),
-    ("G gpt-4o-transcribe | промптда «Uzbek language» (инглизча)", "gpt-4o-transcribe", None, UZ_PROMPT_EN),
-    ("H gpt-4o-transcribe | промпт ўзбекча лотин", "gpt-4o-transcribe", None, UZ_PROMPT_UZ),
-    ("I gpt-4o-transcribe | промпт ўзбекча кирилл", "gpt-4o-transcribe", None, UZ_PROMPT_CYR),
-    ("J gpt-4o-mini-transcribe | промптда «Uzbek language»", "gpt-4o-mini-transcribe", None, UZ_PROMPT_EN),
+    ("B gpt-4o-transcribe | ҳозирги бот", "gpt-4o-transcribe", None, HINT),
+    ("J gpt-4o-mini-transcribe | «Uzbek language» мажбурий", "gpt-4o-mini-transcribe", None, UZ_PROMPT_EN),
+    ("K gpt-4o-mini-transcribe | аралаш тил кўрсатмаси (ўзбек/рус/инглиз)", "gpt-4o-mini-transcribe", None, UZ_PROMPT_MIXED),
+    ("L gpt-4o-mini-transcribe | кўрсатмасиз", "gpt-4o-mini-transcribe", None, None),
 ]
 
 # ---------- солиштириш учун матнни бир кўринишга келтириш ----------
@@ -137,14 +137,22 @@ def run_aisha(audio_path, key):
     return r.json().get("transcript", "")
 
 
+def collect_audio(args):
+    import glob
+    files = []
+    for a in (args or [str(DEFAULT_AUDIO)]):
+        pa = a if os.path.isabs(a) else str(ROOT / a)
+        hits = sorted(glob.glob(pa)) or ([pa] if os.path.exists(pa) else [])
+        files += [Path(h) for h in hits if Path(h).is_file()]
+    return files
+
+
 def main():
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env")
-    audio = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_AUDIO
-    if not audio.is_absolute():
-        audio = ROOT / audio
-    if not audio.exists():
-        sys.exit(f"Аудио файл топилмади: {audio}")
+    audios = collect_audio(sys.argv[1:])
+    if not audios:
+        sys.exit("Аудио файл топилмади")
 
     openai_key = os.getenv("OPENAI_API_KEY")
     if not openai_key:
@@ -153,30 +161,30 @@ def main():
     client = OpenAI(api_key=openai_key, timeout=120.0, max_retries=1)
 
     etalon = ETALON.read_text(encoding="utf-8").strip() if ETALON.exists() else ""
-    jobs = [(n, (lambda m=m, l=l, p=p: run_openai(client, audio, m, l, p))) for n, m, l, p in OPENAI_VARIANTS]
-    if os.getenv("ASSEMBLYAI_API_KEY"):
-        k = os.getenv("ASSEMBLYAI_API_KEY")
-        jobs.append(("G AssemblyAI Universal-2 | uz", lambda: run_assemblyai(audio, k)))
-    if os.getenv("AISHA_API_KEY"):
-        k = os.getenv("AISHA_API_KEY")
-        jobs.append(("H Aisha AI | uz", lambda: run_aisha(audio, k)))
-
-    lines = [f"Аудио: {audio.name}", f"Эталон: {'бор' if etalon else 'йўқ (WER ҳисобланмайди)'}", ""]
-    summary = []
-    for name, fn in jobs:
-        t0 = time.time()
-        try:
-            text = fn()
-            err = None
-        except Exception as e:  # хато матнида калит бўлмайди
-            text, err = "", f"{type(e).__name__}: {str(e)[:300]}"
-        dt = time.time() - t0
-        score = ""
-        if etalon and text:
-            score = f"WER≈{wer_prefix(etalon, text) * 100:.0f}%"
-        lines += [f"=== {name} ({dt:.1f} с) {score}", err or text, ""]
-        summary.append(f"{name}: {'ХАТО' if err else (score or 'тайёр')} ({dt:.1f} с)")
-        print(summary[-1])
+    lines = [f"Файллар: {len(audios)}", f"Эталон: {'бор' if etalon else 'йўқ'}", ""]
+    for audio in audios:
+        label = f"{audio.parent.name}/{audio.name}"
+        lines += ["#" * 70, f"ФАЙЛ: {label}", ""]
+        print(f"\n== {label}")
+        jobs = [(n, (lambda m=m, l=l, p=p: run_openai(client, audio, m, l, p))) for n, m, l, p in OPENAI_VARIANTS]
+        if os.getenv("ASSEMBLYAI_API_KEY"):
+            k = os.getenv("ASSEMBLYAI_API_KEY")
+            jobs.append(("G AssemblyAI Universal-2 | uz", lambda: run_assemblyai(audio, k)))
+        if os.getenv("AISHA_API_KEY"):
+            k = os.getenv("AISHA_API_KEY")
+            jobs.append(("H Aisha AI | uz", lambda: run_aisha(audio, k)))
+        for name, fn in jobs:
+            t0 = time.time()
+            try:
+                text, err = fn(), None
+            except Exception as e:  # хато матнида калит бўлмайди
+                text, err = "", f"{type(e).__name__}: {str(e)[:300]}"
+            dt = time.time() - t0
+            score = ""
+            if etalon and text and len(audios) == 1:
+                score = f"WER≈{wer_prefix(etalon, text) * 100:.0f}%"
+            lines += [f"=== {name} ({dt:.1f} с) {score}", err or text, ""]
+            print(f"  {name}: {'ХАТО' if err else (score or 'тайёр')} ({dt:.1f} с)")
 
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text("\n".join(lines), encoding="utf-8")
