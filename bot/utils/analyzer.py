@@ -212,7 +212,10 @@ _QUALITY_RULES = {
         "13. Таржимада мана бу атамаларни ишлат: retention/удержание — «томошабинни ушлаб туриш»; ссылка — «ҳавола»; гайд — «қўлланма»; залететь/виралиться — «оммабоп бўлиб кетиш»; промпт — «промпт»; трафик — «трафик»; воронка продаж — «сотув воронкаси».\n"
         "14. Матн жуда қисқа бўлса ҳам, мавжуд матнни транскрипция сифатида кўрсат ва беш блокни тўлдир; «етарли маълумот йўқ» деб умумий рад жавоби ёзма.\n"
         "15. Claude номини ҳар доим «Claude» деб ёз («Клод», «клод» ёзма). Рақамларни ва сўзларни фигурали қавс {} ичига олма.\n"
-        "16. Изоҳ матнини (caption) аслидаги ёзув ва ҳарфларда айнан қолдир: уни таржима қилма ва бошқа ёзувга ўгирма."
+        "16. Изоҳ матнини (caption) аслидаги ёзув ва ҳарфларда айнан қолдир: уни таржима қилма ва бошқа ёзувга ўгирма.\n"
+        "17. Instagram Reels ни ҳамма вақт «Reels» деб ёз («рейс», «рол», «рилс» ёзма); чат-ботни «чат-бот» деб ёз («аудиочат» ёзма).\n"
+        "18. Агар «💡 АМАЛИЙ ҚИЙМАТ» да «Бор ✓» деб ёзсанг, «🚀 СИНАБ КЎРИШ» бўлими МАЖБУРИЙ: биринчи қадам, восита ва вақтни кўрсат. «Бор ✓» ни фақат видеода ҳақиқатан кўрсатилган аниқ қадам ёки восита бўлсагина қўй; фақат ваъда ва даъво бўлса — «Йўқ ✗».\n"
+        "19. Видеода шахсий даромад, сотув ёки обуначи натижалари айтилса («555 минг рубл», «10 минг обуначи»), уларни «⚠️ ОРТИРИЛГАН» да «текширилмаган» деб белгила. Видеонинг мақсади курс ёки хизматни сотиш бўлса (кодли сўзга «совға» ваъдаси, «директга ёзинг» каби), «🎯 МАРКЕТИНГ ТАКТИКАСИ» да буни очиқ «реклама ва сотув воронкаси» деб ёз."
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -250,7 +253,10 @@ _QUALITY_RULES = {
         "12. Atamalarni shunday tarjima qil: retention/удержание — «tomoshabinni ushlab turish»; ссылка — «havola»; гайд — «qo'llanma»; залететь/виралиться — «ommabop bo'lib ketish»; воронка продаж — «sotuv voronkasi».\n"
         "13. Matn juda qisqa bo'lsa ham, mavjud matnni «Transkripsiya» bo'limida ko'rsat va besh blokni to'ldir; «yetarli ma'lumot yo'q» deb umumiy rad javobi yozma.\n"
         "14. Claude nomini har doim «Claude» deb yoz («Klod», «Klaud» yozma). Raqam va so'zlarni figurali qavs {} ichiga olma.\n"
-        "15. Izoh matnini (caption) asl yozuvi va harflarida aynan qoldir: uni tarjima qilma va lotin harfiga transliteratsiya qilma."
+        "15. Izoh matnini (caption) asl yozuvi va harflarida aynan qoldir: uni tarjima qilma va lotin harfiga transliteratsiya qilma.\n"
+        "16. Instagram Reels ni har doim «Reels» deb yoz («reys», «rol», «rils» yozma); chat-botni «chat-bot» deb yoz («audiochat» yozma).\n"
+        "17. Agar «💡 AMALIY QIYMAT» da «Bor ✓» deb yozsang, «🚀 SINAB KO'RISH» bo'limi MAJBURIY: birinchi qadam, vosita va vaqtni ko'rsat. «Bor ✓» ni faqat videoda haqiqatan ko'rsatilgan aniq qadam yoki vosita bo'lsagina qo'y; faqat va'da va da'vo bo'lsa — «Yo'q ✗».\n"
+        "18. Videoda shaxsiy daromad, sotuv yoki obunachi natijalari aytilsa («555 ming rubl», «10 ming obunachi»), ularni «⚠️ ORTIRILGAN» bo'limida «tekshirilmagan» deb belgila. Video maqsadi kurs yoki xizmat sotish bo'lsa (kod so'zga «sovg'a» va'dasi, «direktga yozing» kabi), «🎯 MARKETING TAKTIKASI» da buni ochiq «reklama va sotuv voronkasi» deb yoz."
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -285,7 +291,10 @@ _QUALITY_RULES = {
         "11. Если искажённое слово в аудио созвучно слову из подписи (например, «кардайнка», "
         "«корзина» и Korzinka), бери написание из подписи.\n"
         "12. Даже если текст очень короткий, покажи его в разделе транскрипции и заполни пять блоков; не пиши общий отказ вида «недостаточно информации».\n"
-        "13. Название Claude всегда пиши как «Claude» (не «Клод», «Клауд»). Не заключай числа и слова в фигурные скобки {}."
+        "13. Название Claude всегда пиши как «Claude» (не «Клод», «Клауд»). Не заключай числа и слова в фигурные скобки {}.\n"
+        "14. Instagram Reels всегда пиши как «Reels» (не «рейсы», не «ролы»); чат-бот пиши как «чат-бот».\n"
+        "15. Если в «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» пишешь «Есть ✓», раздел «🚀 КАК ПОПРОБОВАТЬ» ОБЯЗАТЕЛЕН: первый шаг, инструмент и время. «Есть ✓» ставь только если в видео реально показаны конкретные шаги или инструмент; если только обещания и заявления — «Нет ✗».\n"
+        "16. Если в видео названы личные доходы, продажи или результаты по подписчикам («555 тысяч рублей», «10 тысяч подписчиков»), отмечай их в «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено». Если цель видео — продать курс или услугу (обещание «подарка» за кодовое слово, «пиши в директ»), прямо назови это рекламой и воронкой продаж в «🎯 МАРКЕТИНГОВАЯ ТАКТИКА»."
     ),
 }
 
