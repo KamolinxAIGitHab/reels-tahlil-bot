@@ -221,7 +221,8 @@ _QUALITY_RULES = {
         "20. Видеода ҳуқуқий даъво («бу қонуний», «рухсат этилган»), нарх, миқдор ёки ҳажм рақамлари («300 дан ортиқ илова», «ойига 20 доллар») айтилса, уларни «⚠️ ОРТИРИЛГАН» да алоҳида «текширилмаган» деб санаб ўт. Бу блокни умумий гап билан тўлдирма: аниқ ибора ёки рақамни келтир. Аудиода «МСП» ёки «эм-си-пи» деб эшитилса, «MCP» деб ёз.\n"
         "21. «💡 АМАЛИЙ ҚИЙМАТ» да «Бор ✓» ни фақат томошабин ўзи такрорлай оладиган аниқ қадам ёки восита бўлса қўй. Муаллифнинг ўз ишлари, кундалиги ёки натижалари ҳақидаги ҳикоя учун «Йўқ ✗» ёз. «🚀 СИНАБ КЎРИШ» да томошабин қила оладиган ҳаракатни ёз; муаллифнинг даъвосини ёки натижа муддатини («30 кунда натижа» каби) такрорлама.\n"
         "22. Видеода бошқа давлатнинг қонуни, органи ёки солиқ тартиби (Роскомнадзор, ИП, самозанятость, рубль ва ш.к.) тилга олинса, таҳлилда ҳар бирини номи билан санаб, «Россия учун; Ўзбекистонга тўғри келмаслиги мумкин» деб белги. Бу албатта «⚠️ ОРТИРИЛГАН» қаторида, органнинг ўз номи билан бўлсин; номсиз умумий жумла ёзма. Бундай органни «🚀 СИНАБ КЎРИШ» да томошабинга қадам қилиб берма.\n"
-        "23. «Аудио сифати паст» каби огоҳлантиришни ўзинг ёзма: у автоматик қўшилади. Исм, жой номи ва рақамлар аниқ бўлмаса, уларни «✅ ТЕХНИК ТЎҒРИ» да факт сифатида тасдиқлама."
+        "23. «Аудио сифати паст» каби огоҳлантиришни ўзинг ёзма: у автоматик қўшилади. Исм, жой номи ва рақамлар аниқ бўлмаса, уларни «✅ ТЕХНИК ТЎҒРИ» да факт сифатида тасдиқлама.\n"
+        "24. Маркетинг тактикаси қаторидаги «» ичидаги иқтибосни изоҳ ёки аудиодаги сўзларга аниқ мос ёз: сўзни ўзинг алмаштирма ва бошқа маънога ўзгартирма (масалан, «darslik» ни «дўстлик» деб ёзма); фақат ёзувни танланган ёзувга ўгир."
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -266,7 +267,8 @@ _QUALITY_RULES = {
         "19. Videoda huquqiy da'vo («bu qonuniy», «ruxsat etilgan»), narx, miqdor yoki hajm raqamlari («300 dan ortiq ilova», «oyiga 20 dollar») aytilsa, ularni «⚠️ ORTIRILGAN» da alohida «tekshirilmagan» deb sanab o't. Bu blokni umumiy gap bilan to'ldirma: aniq ibora yoki raqamni keltir. Audioda «MSP» yoki «em-si-pi» deb eshitilsa, «MCP» deb yoz.\n"
         "20. «💡 AMALIY QIYMAT» da «Bor ✓» ni faqat tomoshabin o'zi takrorlay oladigan aniq qadam yoki vosita bo'lsa qo'y. Muallifning o'z ishlari, kundaligi yoki natijalari haqidagi hikoya uchun «Yo'q ✗» yoz. «🚀 SINAB KO'RISH» da tomoshabin qila oladigan harakatni yoz; muallifning da'vosini yoki natija muddatini («30 kunda natija» kabi) takrorlama.\n"
         "21. Videoda boshqa davlatning qonuni, organi yoki soliq tartibi (Roskomnadzor, IP, samozanyatost, rubl va h.k.) tilga olinsa, tahlilda har birini nomi bilan sanab, «Rossiya uchun; O'zbekistonga to'g'ri kelmasligi mumkin» deb belgila. Bu albatta «⚠️ ORTIRILGAN» qatorida, organning o'z nomi bilan bo'lsin; nomsiz umumiy jumla yozma. Bunday organni «🚀 SINAB KO'RISH» da tomoshabinga qadam qilib berma.\n"
-        "22. «Audio sifati past» kabi ogohlantirishni o'zing yozma: u avtomatik qo'shiladi. Ism, joy nomi va raqamlar aniq bo'lmasa, ularni «✅ TEXNIK TO'G'RI» da fakt sifatida tasdiqlama."
+        "22. «Audio sifati past» kabi ogohlantirishni o'zing yozma: u avtomatik qo'shiladi. Ism, joy nomi va raqamlar aniq bo'lmasa, ularni «✅ TEXNIK TO'G'RI» da fakt sifatida tasdiqlama.\n"
+        "23. Marketing taktikasi qatoridagi «» ichidagi iqtibosni izoh yoki audiodagi so'zlarga aniq mos yoz: so'zni o'zing almashtirma va boshqa ma'noga o'zgartirma (masalan, «darslik» ni «do'stlik» deb yozma); faqat yozuvni tanlangan yozuvga o'gir."
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -308,7 +310,8 @@ _QUALITY_RULES = {
         "17. Если в видео звучат правовые утверждения («это законно», «разрешено»), цены, количества или объёмы («более 300 приложений», «20 долларов в месяц»), перечисли их отдельно в «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено». Не заполняй этот блок общими фразами: приводи конкретную фразу или число. Если в аудио слышится «МСП» или «эм-си-пи», пиши «MCP».\n"
         "18. В «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» ставь «Есть ✓» только если зритель сам может повторить конкретный шаг или использовать инструмент. Для рассказа автора о своих делах, дневника или результатов пиши «Нет ✗». В «🚀 КАК ПОПРОБОВАТЬ» пиши действие, которое может выполнить зритель; не повторяй заявление автора и срок результата («результат за 30 дней»).\n"
         "19. Если в видео упоминаются закон, орган или налоговый режим другой страны (Роскомнадзор, ИП, самозанятость, рубль и т.п.), отметь в анализе каждый из них по названию: «для России; для Узбекистана может не подходить». Это обязательно в строке «⚠️ ПРЕУВЕЛИЧЕНО», с самим названием органа; общих фраз без названия не пиши. Такой орган не давай зрителю как шаг в «🚀 КАК ПОПРОБОВАТЬ».\n"
-        "20. Предупреждение вроде «Качество аудио низкое» не пиши сам: оно добавляется автоматически. Имена, названия мест и числа, в которых нет уверенности, не подтверждай как факты в «✅ ТЕХНИЧЕСКИ ВЕРНО»."
+        "20. Предупреждение вроде «Качество аудио низкое» не пиши сам: оно добавляется автоматически. Имена, названия мест и числа, в которых нет уверенности, не подтверждай как факты в «✅ ТЕХНИЧЕСКИ ВЕРНО».\n"
+        "21. Цитату в «» в строке про маркетинговую тактику бери из описания или аудио точно по словам: не заменяй слова и не меняй смысл (например, «darslik» не превращай в «дружба»); меняй только письменность на выбранную."
     ),
 }
 
