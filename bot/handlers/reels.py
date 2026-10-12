@@ -2,6 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.filters import Command
 import asyncio
+from collections import deque
 import html
 import os
 import re
@@ -46,6 +47,29 @@ COOKIE_EXPIRED_ADMIN_MESSAGE = (
 COOKIE_ALERT_INTERVAL_SECONDS = 60 * 60
 _last_cookie_alert = 0.0
 
+# Кетма-кет бир нечта ҳар хил ҳаволада HTTP 400 чиқса, сабаб ҳавола эмас,
+# бот ҳисоби ёки cookie бўлиши мумкин. Бу ҳолда админга огоҳлантириш юборилади.
+HTTP400_WINDOW_SECONDS = 15 * 60
+HTTP400_ACCOUNT_THRESHOLD = 3
+_recent_http400: deque = deque()
+HTTP400_ADMIN_MESSAGE = (
+    "⚠️ Instagram охирги 15 дақиқада 3 та ва ундан кўп ҳар хил ҳаволада 400 хатоси берди. "
+    "Бот ҳисобида хавфсизлик текшируви (challenge) бор ёки cookie яроқсиз бўлиши мумкин. "
+    "Ҳисобни ва cookie'ни текшириб, зарур бўлса янгиланг."
+)
+
+
+def register_http400(url: str) -> bool:
+    """HTTP 400 ҳодисасини қайд этади. Охирги 15 дақиқада камида 3 та ҳар хил
+    ҳаволада 400 чиққан бўлса, True қайтаради (ҳисоб ёки cookie муаммоси)."""
+    now = time.monotonic()
+    m = _SHORTCODE_PATTERN.search(url or "")
+    key = m.group(1) if m else (url or "")
+    while _recent_http400 and now - _recent_http400[0][0] > HTTP400_WINDOW_SECONDS:
+        _recent_http400.popleft()
+    _recent_http400.append((now, key))
+    return len({k for _, k in _recent_http400}) >= HTTP400_ACCOUNT_THRESHOLD
+
 
 def _split_message(text: str, limit: int = 4000) -> list:
     """Uzun matnni qator chegarasidan bo'lib, so'z/qator o'rtasida uzilmasligini ta'minlaydi."""
@@ -68,7 +92,8 @@ def _head_tail(text: str, limit: int = 4000):
 
 
 async def notify_cookie_expired(
-    message: Message, lang: str, source_type: str, error: Exception | None = None
+    message: Message, lang: str, source_type: str, error: Exception | None = None,
+    admin_text: str | None = None,
 ) -> None:
     """Instagram cookie eskirganda statistikaga 'cookie_expired' yozadi va
     adminga ogohlantirish yuboradi. Ogohlantirish soatiga bir martadan
@@ -83,7 +108,7 @@ async def notify_cookie_expired(
     _last_cookie_alert = now
 
     cause = getattr(error, "__cause__", None) or error
-    text = COOKIE_EXPIRED_ADMIN_MESSAGE
+    text = admin_text or COOKIE_EXPIRED_ADMIN_MESSAGE
     if cause:
         text += f"\n\nСабаб: {str(cause)[:300]}"
     try:
@@ -1104,6 +1129,7 @@ async def process_reel(message: Message, url: str):
         else:
             await status_msg.edit_text(result_text, parse_mode="HTML")
 
+        _recent_http400.clear()
         stats.log_analysis(
             message.from_user.id, "instagram_reels", lang, "success",
             error_type="cookie_fallback" if used_cookie_fallback else None,
@@ -1149,6 +1175,10 @@ async def process_reel(message: Message, url: str):
                 ),
             }
             await status_msg.edit_text(rate_messages.get(lang, rate_messages["lang_kirill"]))
+        elif "http error 400" in err and register_http400(url):
+            # Ketma-ket bir nechta turli havolada 400: muammo havolada emas, hisob yoki cookie'da.
+            await notify_cookie_expired(message, lang, "instagram_reels", e, admin_text=HTTP400_ADMIN_MESSAGE)
+            await status_msg.edit_text(COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"]))
         elif "http error 400" in err:
             # Instagram aynan shu havola uchun 400 qaytardi (o'chirilgan, cheklangan
             # yoki video bo'lmagan kontent). Cookie va limit bilan bog'liq emas.
