@@ -507,6 +507,7 @@ async def cmd_stats(message: Message):
             f"  ❌ Ошибки: {s['today_error']}\n"
             f"    - Ограничение Instagram: {et['instagram_limit']}\n"
             f"    - Cookie Instagram: {et['cookie_expired']}\n"
+            f"    - Ссылка не открылась: {et['bad_link']}\n"
             f"    - Кредит OpenAI: {et['openai_credit']}\n"
             f"    - Модерация: {et['moderation']}\n"
             f"    - Другое: {et['boshqa']}\n\n"
@@ -535,6 +536,7 @@ async def cmd_stats(message: Message):
             f"  ❌ Xato: {s['today_error']}\n"
             f"    - Instagram cheklov: {et['instagram_limit']}\n"
             f"    - Instagram cookie: {et['cookie_expired']}\n"
+            f"    - Havola ochilmadi: {et['bad_link']}\n"
             f"    - OpenAI kredit: {et['openai_credit']}\n"
             f"    - Moderatsiya: {et['moderation']}\n"
             f"    - Boshqa: {et['boshqa']}\n\n"
@@ -563,6 +565,7 @@ async def cmd_stats(message: Message):
             f"  ❌ Хато: {s['today_error']}\n"
             f"    - Instagram чеклов: {et['instagram_limit']}\n"
             f"    - Instagram cookie: {et['cookie_expired']}\n"
+            f"    - Ҳавола очилмади: {et['bad_link']}\n"
             f"    - OpenAI кредит: {et['openai_credit']}\n"
             f"    - Модерация: {et['moderation']}\n"
             f"    - Бошқа: {et['boshqa']}\n\n"
@@ -1146,6 +1149,28 @@ async def process_reel(message: Message, url: str):
                 ),
             }
             await status_msg.edit_text(rate_messages.get(lang, rate_messages["lang_kirill"]))
+        elif "http error 400" in err:
+            # Instagram aynan shu havola uchun 400 qaytardi (o'chirilgan, cheklangan
+            # yoki video bo'lmagan kontent). Cookie va limit bilan bog'liq emas.
+            stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "bad_link", str(e))
+            bad_link_messages = {
+                "lang_kirill": (
+                    "⚠️ Бу Reels юкланмади.\n\n"
+                    "У ўчирилган, чекланган ёки видео бўлмаслиги мумкин. "
+                    "Ҳаволани текшириб, қайта юборинг ёки бошқа Reels ҳаволасини юборинг."
+                ),
+                "lang_lotin": (
+                    "⚠️ Bu Reels yuklanmadi.\n\n"
+                    "U o'chirilgan, cheklangan yoki video bo'lmasligi mumkin. "
+                    "Havolani tekshirib, qayta yuboring yoki boshqa Reels havolasini yuboring."
+                ),
+                "lang_rus": (
+                    "⚠️ Этот Reels не загрузился.\n\n"
+                    "Он мог быть удалён, ограничен или не быть видео. "
+                    "Проверьте ссылку и отправьте её ещё раз или отправьте другую ссылку на Reels."
+                ),
+            }
+            await status_msg.edit_text(bad_link_messages.get(lang, bad_link_messages["lang_kirill"]))
         else:
             stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "other", str(e))
             error_messages = {
