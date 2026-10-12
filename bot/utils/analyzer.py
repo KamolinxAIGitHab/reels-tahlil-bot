@@ -208,7 +208,7 @@ _QUALITY_RULES = {
         "қаторда ёз. Уларни умумий матн (проза) билан алмаштирма.\n"
         "11. Аудиодаги бузилган сўз изоҳдаги сўзга товуш жиҳатидан ўхшаса (масалан, «кардайнка», "
         "«корзина» ва Korzinka), изоҳдаги ёзувни ол.\n"
-        "12. Кирилл ёзувидаги матнда лотин ҳарфларни (g, a ва ш.к.) ишлатма; бренд ва техник атамалардан ташқари барча сўзларни кирилда ёз.\n"
+        "12. Кирилл ёзувидаги матнда лотин ҳарфларни (g, a ва ш.к.) ишлатма; бренд ва техник атамалардан ташқари барча сўзларни кирилда ёз. Қирғиз ёки бошқа тилларнинг ҳарфларини (ү, ө, ң) ишлатма: фақат ўзбек кирилл алифбосидан фойдалан (масалан, «учун», «ўйин», «манг»).\n"
         "13. Таржимада мана бу атамаларни ишлат: retention/удержание — «томошабинни ушлаб туриш»; ссылка — «ҳавола»; гайд — «қўлланма»; залететь/виралиться — «оммабоп бўлиб кетиш»; промпт — «промпт»; трафик — «трафик»; воронка продаж — «сотув воронкаси».\n"
         "14. Матн жуда қисқа бўлса ҳам, мавжуд матнни транскрипция сифатида кўрсат ва беш блокни тўлдир; «етарли маълумот йўқ» деб умумий рад жавоби ёзма.\n"
         "15. Claude номини ҳар доим «Claude» деб ёз («Клод», «клод» ёзма). Рақамларни ва сўзларни фигурали қавс {} ичига олма.\n"
@@ -289,6 +289,18 @@ _QUALITY_RULES = {
     ),
 }
 
+_FOREIGN_CYRILLIC = str.maketrans({"ү": "у", "Ү": "У", "ө": "ў", "Ө": "Ў"})
+
+
+def _clean_cyrillic(text: str, lang: str) -> str:
+    """Кирилл жавобда ўзбек алифбосига кирмайдиган қирғиз ҳарфларини тузатади."""
+    if lang != "lang_kirill" or not text:
+        return text
+    text = text.translate(_FOREIGN_CYRILLIC)
+    return text.replace("ң", "нг").replace("Ң", "Нг")
+
+
+
 def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o") -> str:
     """Transkripsiya matnini (Reels ovozi yoki ovozli xabar) tanlangan
     tilga tarjima qilib, texnik to'g'rilik/amaliy qiymat bo'yicha
@@ -307,7 +319,7 @@ def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o")
         ]
     )
 
-    return response.choices[0].message.content
+    return _clean_cyrillic(response.choices[0].message.content, lang)
 
 
 async def analyze_image_content(images: list, caption: str, lang: str = "lang_kirill", model: str = "gpt-4o") -> str:
@@ -417,7 +429,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
         max_tokens=2000
     )
 
-    return response.choices[0].message.content
+    return _clean_cyrillic(response.choices[0].message.content, lang)
 
 
 async def analyze_caption_only(caption: str, lang: str = "lang_kirill", model: str = "gpt-4o") -> str:
@@ -503,7 +515,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
         ],
         max_tokens=2000
     )
-    return response.choices[0].message.content
+    return _clean_cyrillic(response.choices[0].message.content, lang)
 
 
 async def analyze_account(posts: list, biography: str, username: str, lang: str = "lang_kirill") -> str:
@@ -604,4 +616,4 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
         ],
         max_tokens=2000
     )
-    return response.choices[0].message.content
+    return _clean_cyrillic(response.choices[0].message.content, lang)

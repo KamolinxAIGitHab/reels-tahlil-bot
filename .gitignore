@@ -15,3 +15,7 @@ downloads/
 *.mp4
 
 stats.db
+
+# Шахсий ёзувлар ва ёрдамчи папкалар
+hisobot.txt
+.claude/

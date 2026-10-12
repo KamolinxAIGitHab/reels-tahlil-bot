@@ -26,6 +26,12 @@ ADMIN_USER_ID = 47575298
 
 user_language: dict[int, str] = {}
 
+RESULT_HEADERS = {
+    "lang_kirill": "Таҳлил натижаси",
+    "lang_lotin": "Tahlil natijasi",
+    "lang_rus": "Результат анализа",
+}
+
 COOKIE_EXPIRED_USER_MESSAGES = {
     "lang_kirill": "⚠️ Техник носозлик. Тез орада тузатилади.",
     "lang_lotin": "⚠️ Texnik nosozlik. Tez orada tuzatiladi.",
@@ -517,8 +523,8 @@ async def cmd_stats(message: Message):
             f"  🇺🇿 Узбекский кириллица: {lng['lang_kirill']}\n"
             f"  🔤 Узбекский латиница: {lng['lang_lotin']}\n"
             f"  🇷🇺 Русский: {lng['lang_rus']}\n\n"
-            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta\n"
-            f"🔄 Cookie fallback: {s['cookie_fallback_count']} ta"
+            f"🔄 Резервный режим (gpt-4o-mini): {s['fallback_used_count']}\n"
+            f"🔄 Повтор через cookie: {s['cookie_fallback_count']}"
             f"{hourly_text}"
         )
     elif lang == "lang_lotin":
@@ -573,8 +579,8 @@ async def cmd_stats(message: Message):
             f"  🇺🇿 Ўзбек кирилл: {lng['lang_kirill']}\n"
             f"  🔤 Ўзбек лотин: {lng['lang_lotin']}\n"
             f"  🇷🇺 Рус: {lng['lang_rus']}\n\n"
-            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta\n"
-            f"🔄 Cookie fallback: {s['cookie_fallback_count']} ta"
+            f"🔄 Захира режим (gpt-4o-mini): {s['fallback_used_count']} та\n"
+            f"🔄 Cookie орқали қайта уриниш: {s['cookie_fallback_count']} та"
             f"{hourly_text}"
         )
     await message.answer(text)
@@ -887,7 +893,7 @@ async def handle_voice(message: Message):
                 fallback_used = True
                 logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_voice): user_id={message.from_user.id}")
 
-        result_text = f"🔍 <b>Таҳлил натижаси:</b>\n\n{html.escape(analysis)}"
+        result_text = f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n{html.escape(analysis)}"
 
         if len(result_text) > 4000:
             _head, _tail = _head_tail(result_text)
@@ -1083,7 +1089,7 @@ async def process_reel(message: Message, url: str):
                 logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_reel): user_id={message.from_user.id} url={url}")
 
         result_text = (
-            f"🔍 <b>Таҳлил натижаси:</b>\n\n"
+            f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n"
             f"{html.escape(analysis)}"
         )
         cache_put(url, lang, result_text)
@@ -1180,7 +1186,7 @@ async def handle_youtube(message: Message):
 
             analysis = await loop.run_in_executor(None, analyze_content, subtitle_text, lang)
             result_text = (
-                f"🔍 <b>Таҳлил натижаси:</b>\n\n"
+                f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n"
                 f"{html.escape(analysis)}"
             )
             if len(result_text) > 4000:
@@ -1281,7 +1287,7 @@ async def handle_youtube(message: Message):
                 logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_youtube): user_id={message.from_user.id} url={url}")
 
         result_text = (
-            f"🔍 <b>Таҳлил натижаси:</b>\n\n"
+            f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n"
             f"{html.escape(analysis)}"
         )
 
