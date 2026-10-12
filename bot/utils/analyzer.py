@@ -423,11 +423,31 @@ def _audio_is_garbled(audio: str) -> bool:
         return False
 
 
+_TRY_HEADERS = ("🚀 СИНАБ КЎРИШ", "🚀 SINAB KO'RISH", "🚀 КАК ПОПРОБОВАТЬ")
+_POSITIVE_MARKERS = ("Бор ✓", "Bor ✓", "Есть ✓")
+
+
+def _strip_try_block_if_no_value(result: str) -> str:
+    """Амалий қиймат «Бор» бўлмаса, «🚀 СИНАБ КЎРИШ» блокини олиб ташлайди
+    (модель кўрсатма жумласини «Бу бўлимни ёзма.» деб ёзиб юбориши мумкин)."""
+    if any(m in result for m in _POSITIVE_MARKERS):
+        return result
+    idx = -1
+    for h in _TRY_HEADERS:
+        idx = result.find(h)
+        if idx >= 0:
+            break
+    if idx < 0:
+        return result
+    return result[:idx].rstrip()
+
+
 def _postprocess(result: str, lang: str, garbled: bool) -> str:
     """Паст сифат огоҳлантиришини кодда қўшади ва «нотўғри даъво йўқ»
     жумласини қатъий кўринишга келтиради."""
     if not result:
         return result
+    result = _strip_try_block_if_no_value(result)
     note = _LOW_QUALITY_NOTE.get(lang, _LOW_QUALITY_NOTE["lang_kirill"])
     if garbled and note not in result:
         if _WARN_LABEL_RE.search(result):
