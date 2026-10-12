@@ -29,13 +29,17 @@ OUT = ROOT / "downloads" / "stt_natija.txt"
 HINT = "Nutq o'zbek, rus yoki ingliz tilida bo'lishi mumkin. O'zbekcha bo'lsa, o'zbek lotin imlosida yozing: o', g', sh, ch."
 
 # (номи, модель, language, prompt)
+UZ_PROMPT_EN = "The audio is in the Uzbek language. Transcribe it in standard Uzbek Latin orthography (o', g', sh, ch, x, q, h), not in Azerbaijani, Turkish or Kazakh spelling."
+UZ_PROMPT_UZ = "Bu o'zbek tilidagi nutq. O'zbek lotin alifbosida yozing: o', g', sh, ch, x, q, h."
+UZ_PROMPT_CYR = "Бу ўзбек тилидаги нутқ. Ўзбек кирилл алифбосида ёзинг: ў, қ, ғ, ҳ, ш, ч."
+
 OPENAI_VARIANTS = [
-    ("A whisper-1 | авто + кўрсатма", "whisper-1", None, HINT),
+    ("A whisper-1 | авто + кўрсатма (қозоқча чиқиши мумкин)", "whisper-1", None, HINT),
     ("B gpt-4o-transcribe | авто + кўрсатма (ҳозирги бот)", "gpt-4o-transcribe", None, HINT),
-    ("C gpt-4o-transcribe | авто, кўрсатмасиз", "gpt-4o-transcribe", None, None),
-    ("D gpt-4o-transcribe | language=uz", "gpt-4o-transcribe", "uz", None),
-    ("E gpt-4o-mini-transcribe | language=uz", "gpt-4o-mini-transcribe", "uz", None),
-    ("F whisper-1 | language=uz", "whisper-1", "uz", None),
+    ("G gpt-4o-transcribe | промптда «Uzbek language» (инглизча)", "gpt-4o-transcribe", None, UZ_PROMPT_EN),
+    ("H gpt-4o-transcribe | промпт ўзбекча лотин", "gpt-4o-transcribe", None, UZ_PROMPT_UZ),
+    ("I gpt-4o-transcribe | промпт ўзбекча кирилл", "gpt-4o-transcribe", None, UZ_PROMPT_CYR),
+    ("J gpt-4o-mini-transcribe | промптда «Uzbek language»", "gpt-4o-mini-transcribe", None, UZ_PROMPT_EN),
 ]
 
 # ---------- солиштириш учун матнни бир кўринишга келтириш ----------
