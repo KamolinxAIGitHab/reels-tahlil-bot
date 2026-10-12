@@ -524,7 +524,7 @@ async def cmd_stats(message: Message):
             f"  🔤 Узбекский латиница: {lng['lang_lotin']}\n"
             f"  🇷🇺 Русский: {lng['lang_rus']}\n\n"
             f"🔄 Резервный режим (gpt-4o-mini): {s['fallback_used_count']}\n"
-            f"🔄 Повтор через cookie: {s['cookie_fallback_count']}"
+            f"🔄 Загрузка с cookie: {s['cookie_fallback_count']}"
             f"{hourly_text}"
         )
     elif lang == "lang_lotin":
@@ -552,7 +552,7 @@ async def cmd_stats(message: Message):
             f"  🔤 O'zbek lotin: {lng['lang_lotin']}\n"
             f"  🇷🇺 Rus: {lng['lang_rus']}\n\n"
             f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta\n"
-            f"🔄 Cookie fallback: {s['cookie_fallback_count']} ta"
+            f"🔄 Cookie bilan yuklash: {s['cookie_fallback_count']} ta"
             f"{hourly_text}"
         )
     else:
@@ -580,7 +580,7 @@ async def cmd_stats(message: Message):
             f"  🔤 Ўзбек лотин: {lng['lang_lotin']}\n"
             f"  🇷🇺 Рус: {lng['lang_rus']}\n\n"
             f"🔄 Захира режим (gpt-4o-mini): {s['fallback_used_count']} та\n"
-            f"🔄 Cookie орқали қайта уриниш: {s['cookie_fallback_count']} та"
+            f"🔄 Cookie билан юклаш: {s['cookie_fallback_count']} та"
             f"{hourly_text}"
         )
     await message.answer(text)
