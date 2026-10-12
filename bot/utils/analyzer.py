@@ -1,3 +1,4 @@
+import re
 from dotenv import load_dotenv
 load_dotenv()
 from openai import OpenAI, AsyncOpenAI
@@ -219,7 +220,7 @@ _QUALITY_RULES = {
         "20. Видеода ҳуқуқий даъво («бу қонуний», «рухсат этилган»), нарх, миқдор ёки ҳажм рақамлари («300 дан ортиқ илова», «ойига 20 доллар») айтилса, уларни «⚠️ ОРТИРИЛГАН» да алоҳида «текширилмаган» деб санаб ўт. Бу блокни умумий гап билан тўлдирма: аниқ ибора ёки рақамни келтир. Аудиода «МСП» ёки «эм-си-пи» деб эшитилса, «MCP» деб ёз.\n"
         "21. «💡 АМАЛИЙ ҚИЙМАТ» да «Бор ✓» ни фақат томошабин ўзи такрорлай оладиган аниқ қадам ёки восита бўлса қўй. Муаллифнинг ўз ишлари, кундалиги ёки натижалари ҳақидаги ҳикоя учун «Йўқ ✗» ёз. «🚀 СИНАБ КЎРИШ» да томошабин қила оладиган ҳаракатни ёз; муаллифнинг даъвосини ёки натижа муддатини («30 кунда натижа» каби) такрорлама.\n"
         "22. Видеода бошқа давлатнинг қонуни, органи ёки солиқ тартиби (Роскомнадзор, ИП, самозанятость, рубль ва ш.к.) тилга олинса, таҳлилда ҳар бирини номи билан санаб, «Россия учун; Ўзбекистонга тўғри келмаслиги мумкин» деб белги. Бундай органни «🚀 СИНАБ КЎРИШ» да томошабинга қадам қилиб берма.\n"
-        "23. Фақат АСЛ аудио матнининг ўзи маъносиз бўлса (бузилган сўзлар, тушуниб бўлмайдиган исм ва номлар кўп бўлса), «⚠️ ОРТИРИЛГАН» блокини «Аудио сифати паст, транскрипция ишончсиз.» жумласи билан бошла. Аудио аниқ ва тушунарли бўлса (рус, инглиз ва бошқа тилда ҳам), бу жумлани ёзма. Бундай бузуқ жойлардаги исм, жой номи ва рақамларни «✅ ТЕХНИК ТЎҒРИ» да факт сифатида тасдиқлама."
+        "23. «Аудио сифати паст» каби огоҳлантиришни ўзинг ёзма: у автоматик қўшилади. Исм, жой номи ва рақамлар аниқ бўлмаса, уларни «✅ ТЕХНИК ТЎҒРИ» да факт сифатида тасдиқлама."
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -264,7 +265,7 @@ _QUALITY_RULES = {
         "19. Videoda huquqiy da'vo («bu qonuniy», «ruxsat etilgan»), narx, miqdor yoki hajm raqamlari («300 dan ortiq ilova», «oyiga 20 dollar») aytilsa, ularni «⚠️ ORTIRILGAN» da alohida «tekshirilmagan» deb sanab o't. Bu blokni umumiy gap bilan to'ldirma: aniq ibora yoki raqamni keltir. Audioda «MSP» yoki «em-si-pi» deb eshitilsa, «MCP» deb yoz.\n"
         "20. «💡 AMALIY QIYMAT» da «Bor ✓» ni faqat tomoshabin o'zi takrorlay oladigan aniq qadam yoki vosita bo'lsa qo'y. Muallifning o'z ishlari, kundaligi yoki natijalari haqidagi hikoya uchun «Yo'q ✗» yoz. «🚀 SINAB KO'RISH» da tomoshabin qila oladigan harakatni yoz; muallifning da'vosini yoki natija muddatini («30 kunda natija» kabi) takrorlama.\n"
         "21. Videoda boshqa davlatning qonuni, organi yoki soliq tartibi (Roskomnadzor, IP, samozanyatost, rubl va h.k.) tilga olinsa, tahlilda har birini nomi bilan sanab, «Rossiya uchun; O'zbekistonga to'g'ri kelmasligi mumkin» deb belgila. Bunday organni «🚀 SINAB KO'RISH» da tomoshabinga qadam qilib berma.\n"
-        "22. Faqat ASL audio matnining o'zi ma'nosiz bo'lsa (buzilgan so'zlar, tushunib bo'lmaydigan ism va nomlar ko'p bo'lsa), «⚠️ ORTIRILGAN» blokini «Audio sifati past, transkripsiya ishonchsiz.» jumlasi bilan boshla. Audio aniq va tushunarli bo'lsa (rus, ingliz va boshqa tilda ham), bu jumlani yozma. Bunday buzuq joylardagi ism, joy nomi va raqamlarni «✅ TEXNIK TO'G'RI» da fakt sifatida tasdiqlama."
+        "22. «Audio sifati past» kabi ogohlantirishni o'zing yozma: u avtomatik qo'shiladi. Ism, joy nomi va raqamlar aniq bo'lmasa, ularni «✅ TEXNIK TO'G'RI» da fakt sifatida tasdiqlama."
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -306,7 +307,7 @@ _QUALITY_RULES = {
         "17. Если в видео звучат правовые утверждения («это законно», «разрешено»), цены, количества или объёмы («более 300 приложений», «20 долларов в месяц»), перечисли их отдельно в «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено». Не заполняй этот блок общими фразами: приводи конкретную фразу или число. Если в аудио слышится «МСП» или «эм-си-пи», пиши «MCP».\n"
         "18. В «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» ставь «Есть ✓» только если зритель сам может повторить конкретный шаг или использовать инструмент. Для рассказа автора о своих делах, дневника или результатов пиши «Нет ✗». В «🚀 КАК ПОПРОБОВАТЬ» пиши действие, которое может выполнить зритель; не повторяй заявление автора и срок результата («результат за 30 дней»).\n"
         "19. Если в видео упоминаются закон, орган или налоговый режим другой страны (Роскомнадзор, ИП, самозанятость, рубль и т.п.), отметь в анализе каждый из них по названию: «для России; для Узбекистана может не подходить». Такой орган не давай зрителю как шаг в «🚀 КАК ПОПРОБОВАТЬ».\n"
-        "20. Только если сам ИСХОДНЫЙ текст аудио бессмыслен (много искажённых слов, непонятных имён и названий), начни блок «⚠️ ПРЕУВЕЛИЧЕНО» фразой «Качество аудио низкое, транскрипция ненадёжна.». Если аудио чёткое и понятное (в том числе на русском или английском), эту фразу не пиши. Имена, названия мест и числа из таких искажённых мест не подтверждай как факты в «✅ ТЕХНИЧЕСКИ ВЕРНО»."
+        "20. Предупреждение вроде «Качество аудио низкое» не пиши сам: оно добавляется автоматически. Имена, названия мест и числа, в которых нет уверенности, не подтверждай как факты в «✅ ТЕХНИЧЕСКИ ВЕРНО»."
     ),
 }
 
@@ -363,6 +364,73 @@ def _ensure_try_block(result: str, lang: str, messages: list, model: str) -> str
     return result
 
 
+_AUDIO_MARKER = "AUDIO MATNI:"
+_LOW_QUALITY_NOTE = {
+    "lang_kirill": "Аудио сифати паст, транскрипция ишончсиз.",
+    "lang_lotin": "Audio sifati past, transkripsiya ishonchsiz.",
+    "lang_rus": "Качество аудио низкое, транскрипция ненадёжна.",
+}
+_NONE_FOUND = {
+    "lang_kirill": ("Аниқ нотўғри даъво топилмади.", "топилмади"),
+    "lang_lotin": ("Aniq noto'g'ri da'vo topilmadi.", "topilmadi"),
+    "lang_rus": ("Явно неверных утверждений не найдено.", "не найден"),
+}
+_WARN_LABEL_RE = re.compile(r"(⚠\ufe0f?\s*(?:ОРТИРИЛГАН|ORTIRILGAN|ПРЕУВЕЛИЧЕНО):)")
+
+
+def _audio_part(text: str) -> str:
+    """CAPTION + AUDIO MATNI аралаш матндан фақат аудио қисмини ажратади."""
+    idx = text.find(_AUDIO_MARKER)
+    return (text[idx + len(_AUDIO_MARKER):] if idx >= 0 else text).strip()
+
+
+def _audio_is_garbled(audio: str) -> bool:
+    """Кичик модель аудио матни маъносиз ёки бузуқ эканини айтади (ҳа/йўқ).
+    Қисқа матн ёки хатода False қайтади (ёлғон огоҳлантиришдан сақланиш учун)."""
+    if len(audio) < 60:
+        return False
+    try:
+        r = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0,
+            max_tokens=3,
+            messages=[
+                {"role": "system", "content": "You judge speech-to-text output. Answer only YES or NO."},
+                {"role": "user", "content": (
+                    "Is the following transcript mostly meaningless or garbled "
+                    "(many broken or non-existent words, unintelligible names)? "
+                    "Clear, understandable text in any language, including Russian or English, "
+                    "is NOT garbled.\n\n<TEXT>\n" + audio[:3000] + "\n</TEXT>"
+                )},
+            ],
+        )
+        return r.choices[0].message.content.strip().upper().startswith("YES")
+    except Exception:
+        return False
+
+
+def _postprocess(result: str, lang: str, garbled: bool) -> str:
+    """Паст сифат огоҳлантиришини кодда қўшади ва «нотўғри даъво йўқ»
+    жумласини қатъий кўринишга келтиради."""
+    if not result:
+        return result
+    note = _LOW_QUALITY_NOTE.get(lang, _LOW_QUALITY_NOTE["lang_kirill"])
+    if garbled and note not in result:
+        if _WARN_LABEL_RE.search(result):
+            result = _WARN_LABEL_RE.sub(lambda m: m.group(1) + " " + note, result, count=1)
+        else:
+            result = result.rstrip() + "\n\n⚠️ " + note
+    phrase, stem = _NONE_FOUND.get(lang, _NONE_FOUND["lang_kirill"])
+    lines = []
+    for line in result.split("\n"):
+        if line.lstrip().startswith("❌") and ":" in line:
+            head, body = line.split(":", 1)
+            if stem in body.lower() and len(body.strip()) <= 80:
+                line = head + ": " + phrase
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o") -> str:
     """Transkripsiya matnini (Reels ovozi yoki ovozli xabar) tanlangan
     tilga tarjima qilib, texnik to'g'rilik/amaliy qiymat bo'yicha
@@ -380,6 +448,7 @@ def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o")
     response = client.chat.completions.create(model=model, messages=messages, temperature=_ANALYSIS_TEMPERATURE)
     result = response.choices[0].message.content
     result = _ensure_try_block(result, lang, messages, model)
+    result = _postprocess(result, lang, _audio_is_garbled(_audio_part(text)))
 
     return _clean_cyrillic(result, lang)
 
