@@ -222,7 +222,8 @@ _QUALITY_RULES = {
         "21. «💡 АМАЛИЙ ҚИЙМАТ» да «Бор ✓» ни фақат томошабин ўзи такрорлай оладиган аниқ қадам ёки восита бўлса қўй. Муаллифнинг ўз ишлари, кундалиги ёки натижалари ҳақидаги ҳикоя учун «Йўқ ✗» ёз. «🚀 СИНАБ КЎРИШ» да томошабин қила оладиган ҳаракатни ёз; муаллифнинг даъвосини ёки натижа муддатини («30 кунда натижа» каби) такрорлама.\n"
         "22. Видеода бошқа давлатнинг қонуни, органи ёки солиқ тартиби (Роскомнадзор, ИП, самозанятость, рубль ва ш.к.) тилга олинса, таҳлилда ҳар бирини номи билан санаб, «Россия учун; Ўзбекистонга тўғри келмаслиги мумкин» деб белги. Бу албатта «⚠️ ОРТИРИЛГАН» қаторида, органнинг ўз номи билан бўлсин; номсиз умумий жумла ёзма. Бундай органни «🚀 СИНАБ КЎРИШ» да томошабинга қадам қилиб берма.\n"
         "23. «Аудио сифати паст» каби огоҳлантиришни ўзинг ёзма: у автоматик қўшилади. Исм, жой номи ва рақамлар аниқ бўлмаса, уларни «✅ ТЕХНИК ТЎҒРИ» да факт сифатида тасдиқлама.\n"
-        "24. Маркетинг тактикаси қаторидаги «» ичидаги иқтибосни изоҳ ёки аудиодаги сўзларга аниқ мос ёз: сўзни ўзинг алмаштирма ва бошқа маънога ўзгартирма (масалан, «darslik» ни «дўстлик» деб ёзма); фақат ёзувни танланган ёзувга ўгир."
+        "24. Маркетинг тактикаси қаторидаги «» ичидаги иқтибосни изоҳ ёки аудиодаги сўзларга аниқ мос ёз: сўзни ўзинг алмаштирма ва бошқа маънога ўзгартирма (масалан, «darslik» ни «дўстлик» деб ёзма); фақат ёзувни танланган ёзувга ўгир.\n"
+        "25. Матн фақат оддий саломлашув, миннатдорчилик ёки мазмунсиз қисқа жумладан («Привет», «Салом», «Assalomu alaykum», «Спасибо» каби) иборат бўлса, «💡 АМАЛИЙ ҚИЙМАТ» да ҳамиша «Йўқ ✗» ёз ва «🚀 СИНАБ КЎРИШ» бўлимини умуман ёзма. Саломлашув тили (рус, инглиз ва бошқа) бу қоидани ўзгартирмайди; «Бор ✓» ёки «Есть ✓» ёзма."
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -268,7 +269,8 @@ _QUALITY_RULES = {
         "20. «💡 AMALIY QIYMAT» da «Bor ✓» ni faqat tomoshabin o'zi takrorlay oladigan aniq qadam yoki vosita bo'lsa qo'y. Muallifning o'z ishlari, kundaligi yoki natijalari haqidagi hikoya uchun «Yo'q ✗» yoz. «🚀 SINAB KO'RISH» da tomoshabin qila oladigan harakatni yoz; muallifning da'vosini yoki natija muddatini («30 kunda natija» kabi) takrorlama.\n"
         "21. Videoda boshqa davlatning qonuni, organi yoki soliq tartibi (Roskomnadzor, IP, samozanyatost, rubl va h.k.) tilga olinsa, tahlilda har birini nomi bilan sanab, «Rossiya uchun; O'zbekistonga to'g'ri kelmasligi mumkin» deb belgila. Bu albatta «⚠️ ORTIRILGAN» qatorida, organning o'z nomi bilan bo'lsin; nomsiz umumiy jumla yozma. Bunday organni «🚀 SINAB KO'RISH» da tomoshabinga qadam qilib berma.\n"
         "22. «Audio sifati past» kabi ogohlantirishni o'zing yozma: u avtomatik qo'shiladi. Ism, joy nomi va raqamlar aniq bo'lmasa, ularni «✅ TEXNIK TO'G'RI» da fakt sifatida tasdiqlama.\n"
-        "23. Marketing taktikasi qatoridagi «» ichidagi iqtibosni izoh yoki audiodagi so'zlarga aniq mos yoz: so'zni o'zing almashtirma va boshqa ma'noga o'zgartirma (masalan, «darslik» ni «do'stlik» deb yozma); faqat yozuvni tanlangan yozuvga o'gir."
+        "23. Marketing taktikasi qatoridagi «» ichidagi iqtibosni izoh yoki audiodagi so'zlarga aniq mos yoz: so'zni o'zing almashtirma va boshqa ma'noga o'zgartirma (masalan, «darslik» ni «do'stlik» deb yozma); faqat yozuvni tanlangan yozuvga o'gir.\n"
+        "24. Matn faqat oddiy salomlashuv, minnatdorchilik yoki mazmunsiz qisqa jumladan («Привет», «Salom», «Assalomu alaykum», «Спасибо» kabi) iborat bo'lsa, «💡 AMALIY QIYMAT» da hamisha «Yo'q ✗» yoz va «🚀 SINAB KO'RISH» bo'limini umuman yozma. Salomlashuv tili (rus, ingliz va boshqa) bu qoidani o'zgartirmaydi; «Bor ✓» yoki «Есть ✓» yozma."
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -311,7 +313,8 @@ _QUALITY_RULES = {
         "18. В «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» ставь «Есть ✓» только если зритель сам может повторить конкретный шаг или использовать инструмент. Для рассказа автора о своих делах, дневника или результатов пиши «Нет ✗». В «🚀 КАК ПОПРОБОВАТЬ» пиши действие, которое может выполнить зритель; не повторяй заявление автора и срок результата («результат за 30 дней»).\n"
         "19. Если в видео упоминаются закон, орган или налоговый режим другой страны (Роскомнадзор, ИП, самозанятость, рубль и т.п.), отметь в анализе каждый из них по названию: «для России; для Узбекистана может не подходить». Это обязательно в строке «⚠️ ПРЕУВЕЛИЧЕНО», с самим названием органа; общих фраз без названия не пиши. Такой орган не давай зрителю как шаг в «🚀 КАК ПОПРОБОВАТЬ».\n"
         "20. Предупреждение вроде «Качество аудио низкое» не пиши сам: оно добавляется автоматически. Имена, названия мест и числа, в которых нет уверенности, не подтверждай как факты в «✅ ТЕХНИЧЕСКИ ВЕРНО».\n"
-        "21. Цитату в «» в строке про маркетинговую тактику бери из описания или аудио точно по словам: не заменяй слова и не меняй смысл (например, «darslik» не превращай в «дружба»); меняй только письменность на выбранную."
+        "21. Цитату в «» в строке про маркетинговую тактику бери из описания или аудио точно по словам: не заменяй слова и не меняй смысл (например, «darslik» не превращай в «дружба»); меняй только письменность на выбранную.\n"
+        "22. Если текст состоит только из простого приветствия, благодарности или бессодержательной короткой фразы («Привет», «Салом», «Assalomu alaykum», «Спасибо» и т.п.), в «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» всегда пиши «Нет ✗» и раздел «🚀 КАК ПОПРОБОВАТЬ» не пиши вовсе. Язык приветствия (русский, английский или другой) это правило не меняет; «Есть ✓» не пиши."
     ),
 }
 

@@ -203,6 +203,13 @@ OPENAI_AUTH_MESSAGES = {
     "lang_rus": "❌ Проблема с API ключом. Пожалуйста, свяжитесь с администратором.",
 }
 
+SHORT_VOICE_SECONDS = 5
+SHORT_VOICE_NOTES = {
+    "lang_kirill": "⚠️ Овоз жуда қисқа (5 сониядан кам), натижа аниқ бўлмаслиги мумкин.",
+    "lang_lotin": "⚠️ Ovoz juda qisqa (5 soniyadan kam), natija aniq bo'lmasligi mumkin.",
+    "lang_rus": "⚠️ Голосовое сообщение слишком короткое (менее 5 секунд), результат может быть неточным.",
+}
+
 MODERATION_MESSAGES = {
     "lang_kirill": "⚠️ Ушбу контент таҳлил қилинмади. Мазмун хизмат шартларига мос келмайди.",
     "lang_lotin": "⚠️ Ushbu kontent tahlil qilinmadi. Mazmun xizmat shartlariga mos kelmaydi.",
@@ -935,6 +942,10 @@ async def handle_voice(message: Message):
                 logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_voice): user_id={message.from_user.id}")
 
         result_text = f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n{html.escape(analysis)}"
+
+        # Telegram берган давомийлик: 5 сониядан қисқа овозда аниқлик паст бўлиши мумкин
+        if voice.duration is not None and voice.duration < SHORT_VOICE_SECONDS:
+            result_text += "\n\n" + SHORT_VOICE_NOTES.get(lang, SHORT_VOICE_NOTES["lang_kirill"])
 
         if len(result_text) > 4000:
             _head, _tail = _head_tail(result_text)
