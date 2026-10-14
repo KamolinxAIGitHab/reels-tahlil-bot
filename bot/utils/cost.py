@@ -17,24 +17,29 @@ _DEFAULT_PRICES = {
     "gpt-4o": (2.50, 1.25, 10.00),
 }
 
-# gpt-4o-mini-transcribe: daqiqasiga taxminiy narx (USD)
-STT_PRICE_PER_MIN = float(os.getenv("STT_PRICE_PER_MIN", "0.003"))
-# OpenAI Usage sahifasi bilan taqqoslab tuzatish koeffitsienti (1.0 = o'zgartirmaslik)
-COST_ADJUST = float(os.getenv("COST_ADJUST", "1.0"))
-
-
-def _env_limit(name: str, default: float) -> float:
-    try:
-        return float(os.getenv(name, str(default)))
-    except ValueError:
-        logging.warning(f"{name} noto'g'ri qiymat, standart {default} ishlatildi")
+def _env_float(name: str, default: float) -> float:
+    """Muhit o'zgaruvchisidan son o'qiydi. Kasr belgisi nuqta ham, vergul ham
+    bo'lishi mumkin ("0.03" yoki "0,03"). Noto'g'ri qiymatda standart ishlatiladi."""
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
         return default
+    try:
+        return float(raw.strip().replace(",", "."))
+    except ValueError:
+        logging.warning(f"{name}={raw!r} noto'g'ri qiymat, standart {default} ishlatildi")
+        return default
+
+
+# gpt-4o-mini-transcribe: daqiqasiga taxminiy narx (USD)
+STT_PRICE_PER_MIN = _env_float("STT_PRICE_PER_MIN", 0.003)
+# OpenAI Usage sahifasi bilan taqqoslab tuzatish koeffitsienti (1.0 = o'zgartirmaslik)
+COST_ADJUST = _env_float("COST_ADJUST", 1.0)
 
 
 # Kunlik va oylik limit (USD). 0 — o'chirilgan. Limitga yetganda faqat adminga
 # ogohlantirish yuboriladi, foydalanuvchilar bloklanmaydi.
-LIMIT_DAY = _env_limit("COST_LIMIT_DAY", 0.5)
-LIMIT_MONTH = _env_limit("COST_LIMIT_MONTH", 8.0)
+LIMIT_DAY = _env_float("COST_LIMIT_DAY", 0.5)
+LIMIT_MONTH = _env_float("COST_LIMIT_MONTH", 8.0)
 _THRESHOLDS = (80, 100)
 
 _unknown_warned: set[str] = set()
