@@ -235,14 +235,21 @@ def get_cost_summary() -> dict:
         )
         by_label = [(r[0], int(r[1]), float(r[2])) for r in cur.fetchall()]
 
-        cur.execute(
-            "SELECT COUNT(*) FROM analysis_log WHERE status = 'success' AND error_type IS NOT 'cache_hit' "
-            "AND strftime('%Y-%m', timestamp, '+5 hours') = strftime('%Y-%m', 'now', '+5 hours')"
-        )
-        month_requests = int(cur.fetchone()[0])
-
         cur.execute("SELECT MIN(timestamp) FROM cost_log")
         first_ts = cur.fetchone()[0]
+
+        # O'rtacha narx adolatli chiqishi uchun so'rovlar ham faqat xarajat
+        # yozuvi boshlangan paytdan keyingilar bo'yicha sanaladi
+        if first_ts:
+            cur.execute(
+                "SELECT COUNT(*) FROM analysis_log WHERE status = 'success' "
+                "AND error_type IS NOT 'cache_hit' AND timestamp >= ? "
+                "AND strftime('%Y-%m', timestamp, '+5 hours') = strftime('%Y-%m', 'now', '+5 hours')",
+                (first_ts,),
+            )
+            month_requests = int(cur.fetchone()[0])
+        else:
+            month_requests = 0
 
         cur.execute(
             "SELECT MIN(timestamp) FROM cost_log" + month_where
@@ -254,9 +261,10 @@ def get_cost_summary() -> dict:
         forecast = None
         if first_month_ts and month_usd > 0:
             start = datetime.fromisoformat(first_month_ts) + timedelta(hours=5)
-            elapsed_days = max((now_uz - start).total_seconds() / 86400, 1.0)
-            remaining_days = max(days_in_month - (now_uz.day - 1) - (now_uz.hour / 24), 0)
-            forecast = month_usd + month_usd / elapsed_days * remaining_days
+            elapsed_days = (now_uz - start).total_seconds() / 86400
+            if elapsed_days >= 1.0:
+                remaining_days = max(days_in_month - (now_uz.day - 1) - (now_uz.hour / 24), 0)
+                forecast = month_usd + month_usd / elapsed_days * remaining_days
 
         return {
             "today_usd": today_usd, "today_calls": today_calls,

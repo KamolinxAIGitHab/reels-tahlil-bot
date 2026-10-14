@@ -543,7 +543,9 @@ async def cmd_xarajat(message: Message):
     c = stats.get_cost_summary()
 
     def usd(v: float) -> str:
-        return f"${v:.2f}" if v >= 0.1 else f"${v:.3f}"
+        if v >= 0.1:
+            return f"${v:.2f}"
+        return f"${v:.3f}" if v >= 0.01 else f"${v:.4f}"
 
     lines = [
         "💰 OpenAI харажати (тахминий):",
@@ -556,6 +558,8 @@ async def cmd_xarajat(message: Message):
         lines.append(f"📊 Битта сўровга ўртача (бу ой): {usd(c['avg_per_request'])} ({c['month_requests']} та муваффақиятли)")
     if c["forecast_month_usd"] is not None:
         lines.append(f"📈 Ой охиригача тахмин: {usd(c['forecast_month_usd'])}")
+    else:
+        lines.append("📈 Ой охиригача тахмин: камида 1 кунлик маълумот йиғилгач кўрсатилади")
     if c["by_label"]:
         lines.append("\n🔎 Бу ой, тури бўйича:")
         for label, calls, total in c["by_label"]:
