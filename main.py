@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 from aiogram import Bot, Dispatcher
-from aiogram.types import BotCommand
+from aiogram.types import BotCommand, BotCommandScopeChat
 from bot.config import settings
 from bot.handlers import reels
 
@@ -26,6 +26,20 @@ async def main():
         BotCommand(command="help", description="Ёрдам / Помощь"),
         BotCommand(command="stats", description="Статистика"),
     ])
+
+    # /xarajat фақат маъмурнинг менюсида кўринади (бошқа фойдаланувчиларда йўқ)
+    try:
+        await bot.set_my_commands(
+            [
+                BotCommand(command="start", description="Ботни бошлаш / Начать"),
+                BotCommand(command="help", description="Ёрдам / Помощь"),
+                BotCommand(command="stats", description="Статистика"),
+                BotCommand(command="xarajat", description="OpenAI харажати (маъмур)"),
+            ],
+            scope=BotCommandScopeChat(chat_id=reels.ADMIN_USER_ID),
+        )
+    except Exception as e:
+        logging.warning(f"Маъмур буйруқлар менюсини ўрнатиб бўлмади: {e}")
 
     await dp.start_polling(bot)
 
