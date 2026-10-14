@@ -110,7 +110,9 @@ def check_limits() -> None:
                     )
                 else:
                     text = f"⚠️ {title} харажат лимитининг {t}% га етди: {_usd(spent)} / {_usd(limit)}."
-                stats.add_alert(key, text, sent=0 if send_it else 1)
+                added = stats.add_alert(key, text, sent=0 if send_it else 1)
+                if added and send_it:
+                    logging.info(f"COST: огоҳлантириш навбатга ёзилди ({key})")
     except Exception as e:
         logging.warning(f"COST limit текшируви хато берди: {e}")
 

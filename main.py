@@ -26,6 +26,7 @@ async def cost_alert_loop(bot: Bot):
                 try:
                     await bot.send_message(reels.ADMIN_USER_ID, text)
                     await asyncio.to_thread(stats.mark_alert_sent, key)
+                    logging.info(f"COST: огоҳлантириш юборилди ({key})")
                 except Exception as e:
                     logging.warning(f"Харажат огоҳлантиришини юбориб бўлмади ({key}): {e}")
         except Exception as e:

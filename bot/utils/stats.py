@@ -356,3 +356,15 @@ def mark_alert_sent(key: str) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+def recent_alerts(limit: int = 6) -> list[tuple[str, int, str]]:
+    """Oxirgi xarajat ogohlantirishlari: (kalit, yuborilgan(1/0), yaratilgan vaqt UTC)."""
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT key, sent, created_at FROM cost_alert ORDER BY created_at DESC LIMIT ?", (limit,)
+        )
+        return [(r[0], int(r[1]), r[2]) for r in cur.fetchall()]
+    finally:
+        conn.close()

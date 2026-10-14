@@ -568,6 +568,18 @@ async def cmd_xarajat(message: Message):
         limit_parts.append(f"ой {usd(cost_utils.LIMIT_MONTH)} (ишлатилган {c['month_usd'] / cost_utils.LIMIT_MONTH * 100:.0f}%)")
     if limit_parts:
         lines.append("🎯 Огоҳлантириш лимити: " + ", ".join(limit_parts))
+    alerts = stats.recent_alerts(4)
+    if alerts:
+        from datetime import datetime, timedelta
+        lines.append("🔔 Охирги огоҳлантиришлар:")
+        for akey, asent, acreated in alerts:
+            kind, period, pct = akey.split(":")[0], akey.split(":")[1], akey.split(":")[-1]
+            try:
+                when = (datetime.fromisoformat(acreated) + timedelta(hours=5)).strftime("%d.%m %H:%M")
+            except ValueError:
+                when = acreated[:16]
+            state = "юборилган ✅" if asent else "навбатда ⏳"
+            lines.append(f"  • {'кун' if kind == 'day' else 'ой'} {pct}% ({period}): {state}, {when}")
     if c["by_label"]:
         lines.append("\n🔎 Бу ой, тури бўйича:")
         for label, calls, total in c["by_label"]:
