@@ -578,7 +578,7 @@ async def cmd_xarajat(message: Message):
                 when = (datetime.fromisoformat(acreated) + timedelta(hours=5)).strftime("%d.%m %H:%M")
             except ValueError:
                 when = acreated[:16]
-            state = "юборилган ✅" if asent else "навбатда ⏳"
+            state = {0: "навбатда ⏳", 1: "юборилган ✅", 2: "жим ёзилган (юборилмаган)"}.get(asent, str(asent))
             lines.append(f"  • {'кун' if kind == 'day' else 'ой'} {pct}% ({period}): {state}, {when}")
     if c["by_label"]:
         lines.append("\n🔎 Бу ой, тури бўйича:")
