@@ -156,3 +156,118 @@ def get_stats() -> dict:
         }
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# OpenAI xarajati (cost_log). Mavjud analysis_log jadvaliga tegmaydi.
+# ---------------------------------------------------------------------------
+
+def init_cost_table() -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cost_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                label TEXT NOT NULL,
+                model TEXT NOT NULL,
+                input_tokens INTEGER NOT NULL DEFAULT 0,
+                cached_tokens INTEGER NOT NULL DEFAULT 0,
+                output_tokens INTEGER NOT NULL DEFAULT 0,
+                audio_seconds REAL NOT NULL DEFAULT 0,
+                cost_usd REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+init_cost_table()
+
+
+def log_cost(label: str, model: str, input_tokens: int, cached_tokens: int,
+             output_tokens: int, audio_seconds: float, cost_usd: float) -> None:
+    """Bitta OpenAI chaqiruvi xarajatini yozadi. Xato bo'lsa faqat logga yoziladi."""
+    try:
+        conn = _connect()
+        try:
+            conn.execute(
+                "INSERT INTO cost_log "
+                "(timestamp, label, model, input_tokens, cached_tokens, output_tokens, audio_seconds, cost_usd) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (datetime.now(timezone.utc).isoformat(), label, model,
+                 input_tokens, cached_tokens, output_tokens, audio_seconds, cost_usd),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        logging.error(f"cost_log'ga yozib bo'lmadi: {e}")
+
+
+def get_cost_summary() -> dict:
+    """Xarajat yig'indilari: bugun, hafta, oy, jami, oy bo'yicha turlar,
+    bitta so'rovga o'rtacha va oy oxirigacha taxmin. Kunlar UTC+5 bo'yicha."""
+    import calendar
+    from datetime import timedelta
+
+    conn = _connect()
+    try:
+        cur = conn.cursor()
+
+        def total(where: str = "") -> tuple[float, int]:
+            cur.execute(f"SELECT COALESCE(SUM(cost_usd), 0), COUNT(*) FROM cost_log{where}")
+            r = cur.fetchone()
+            return float(r[0]), int(r[1])
+
+        today_usd, today_calls = total(" WHERE date(timestamp, '+5 hours') = date('now', '+5 hours')")
+        week_usd, _ = total(" WHERE strftime('%Y-%W', timestamp, '+5 hours') = strftime('%Y-%W', 'now', '+5 hours')")
+        month_where = " WHERE strftime('%Y-%m', timestamp, '+5 hours') = strftime('%Y-%m', 'now', '+5 hours')"
+        month_usd, month_calls = total(month_where)
+        all_usd, all_calls = total()
+
+        cur.execute(
+            "SELECT label, COUNT(*), COALESCE(SUM(cost_usd), 0) FROM cost_log"
+            + month_where + " GROUP BY label ORDER BY SUM(cost_usd) DESC"
+        )
+        by_label = [(r[0], int(r[1]), float(r[2])) for r in cur.fetchall()]
+
+        cur.execute(
+            "SELECT COUNT(*) FROM analysis_log WHERE status = 'success' AND error_type IS NOT 'cache_hit' "
+            "AND strftime('%Y-%m', timestamp, '+5 hours') = strftime('%Y-%m', 'now', '+5 hours')"
+        )
+        month_requests = int(cur.fetchone()[0])
+
+        cur.execute("SELECT MIN(timestamp) FROM cost_log")
+        first_ts = cur.fetchone()[0]
+
+        cur.execute(
+            "SELECT MIN(timestamp) FROM cost_log" + month_where
+        )
+        first_month_ts = cur.fetchone()[0]
+
+        now_uz = datetime.now(timezone.utc) + timedelta(hours=5)
+        days_in_month = calendar.monthrange(now_uz.year, now_uz.month)[1]
+        forecast = None
+        if first_month_ts and month_usd > 0:
+            start = datetime.fromisoformat(first_month_ts) + timedelta(hours=5)
+            elapsed_days = max((now_uz - start).total_seconds() / 86400, 1.0)
+            remaining_days = max(days_in_month - (now_uz.day - 1) - (now_uz.hour / 24), 0)
+            forecast = month_usd + month_usd / elapsed_days * remaining_days
+
+        return {
+            "today_usd": today_usd, "today_calls": today_calls,
+            "week_usd": week_usd,
+            "month_usd": month_usd, "month_calls": month_calls,
+            "all_usd": all_usd, "all_calls": all_calls,
+            "by_label": by_label,
+            "month_requests": month_requests,
+            "avg_per_request": (month_usd / month_requests) if month_requests else None,
+            "forecast_month_usd": forecast,
+            "tracking_since": first_ts,
+        }
+    finally:
+        conn.close()

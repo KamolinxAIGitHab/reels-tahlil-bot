@@ -524,6 +524,51 @@ async def cmd_help(message: Message):
         )
     await message.answer(text, parse_mode="HTML")
 
+_COST_LABELS = {
+    "stt": "Овоз → матн (STT)",
+    "analyze_content": "Матн таҳлили",
+    "try_block": "«Синаб кўриш» блоки",
+    "audio_garbled": "Овоз сифати текшируви",
+    "analyze_image": "Расм таҳлили",
+    "analyze_caption": "Изоҳ таҳлили",
+    "analyze_account": "Аккаунт таҳлили",
+}
+
+
+@router.message(Command("xarajat"))
+async def cmd_xarajat(message: Message):
+    """OpenAI xarajati hisoboti. Faqat admin uchun; boshqalarga javob berilmaydi."""
+    if message.from_user.id != ADMIN_USER_ID:
+        return
+    c = stats.get_cost_summary()
+
+    def usd(v: float) -> str:
+        return f"${v:.2f}" if v >= 0.1 else f"${v:.3f}"
+
+    lines = [
+        "💰 OpenAI харажати (тахминий):",
+        f"📅 Бугун: {usd(c['today_usd'])} ({c['today_calls']} та чақирув)",
+        f"📅 Бу ҳафта: {usd(c['week_usd'])}",
+        f"📅 Бу ой: {usd(c['month_usd'])} ({c['month_calls']} та чақирув)",
+        f"📅 Ҳисоб бошланишидан бери: {usd(c['all_usd'])}",
+    ]
+    if c["avg_per_request"] is not None:
+        lines.append(f"📊 Битта сўровга ўртача (бу ой): {usd(c['avg_per_request'])} ({c['month_requests']} та муваффақиятли)")
+    if c["forecast_month_usd"] is not None:
+        lines.append(f"📈 Ой охиригача тахмин: {usd(c['forecast_month_usd'])}")
+    if c["by_label"]:
+        lines.append("\n🔎 Бу ой, тури бўйича:")
+        for label, calls, total in c["by_label"]:
+            lines.append(f"  • {_COST_LABELS.get(label, label)}: {usd(total)} ({calls} та)")
+    if c["tracking_since"]:
+        lines.append(f"\n🗓 Ҳисоб бошланган сана (UTC): {c['tracking_since'][:10]}")
+    lines.append(
+        "\n⚠️ Нархлар тахминий: расмий рақамни platform.openai.com → Usage саҳифасидан текширинг. "
+        "Нарх ёки коэффициентни Railway Variables орқали ўзгартириш мумкин."
+    )
+    await message.answer("\n".join(lines))
+
+
 @router.message(Command("stats"))
 async def cmd_stats(message: Message):
     lang = user_language.get(message.from_user.id, "lang_kirill")

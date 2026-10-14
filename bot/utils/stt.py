@@ -6,6 +6,7 @@ from typing import Optional
 
 from openai import OpenAI
 from bot.config import settings
+from bot.utils import cost
 
 client = OpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
 
@@ -62,6 +63,7 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
     aniqlanadi. prompt — odatda Reels caption'i: undagi brend va nomlar
     Whisper'ga imlo bo'yicha yordam beradi.
     """
+    duration = None
     try:
         duration, mean_volume = _probe_audio(file_path)
         logging.info(f"AUDIO STATS: duration={duration} mean_volume={mean_volume}dB")
@@ -108,6 +110,8 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
             raise
         logging.warning(f"STT temperature параметрисиз қайта уриниш: {e}")
         response = _call(language, detect, use_temperature=False)
+
+    cost.record_audio(duration, STT_MODEL)
 
     if detect:
         detected = (getattr(response, "language", None) or "").lower()

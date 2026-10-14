@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from openai import OpenAI, AsyncOpenAI
 from bot.config import settings
+from bot.utils import cost
 
 client = OpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
 async_client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
@@ -356,14 +357,16 @@ def _ensure_try_block(result: str, lang: str, messages: list, model: str) -> str
     if not result or marker not in result or "🚀" in result:
         return result
     try:
-        extra = client.chat.completions.create(
+        _resp = client.chat.completions.create(
             model=model,
             messages=messages + [
                 {"role": "assistant", "content": result},
                 {"role": "user", "content": followup},
             ],
             temperature=_ANALYSIS_TEMPERATURE,
-        ).choices[0].message.content.strip()
+        )
+        cost.record_chat(_resp, "try_block")
+        extra = _resp.choices[0].message.content.strip()
     except Exception:
         return result
     if extra.startswith(header):
@@ -418,6 +421,7 @@ def _audio_is_garbled(audio: str) -> bool:
                 )},
             ],
         )
+        cost.record_chat(r, "audio_garbled")
         garbled = r.choices[0].message.content.strip().upper().startswith("YES")
         logger.info("audio_garbled=%s, len=%d", garbled, len(audio))
         return garbled
@@ -483,6 +487,7 @@ def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o")
         {"role": "user",   "content": user_prompt},
     ]
     response = client.chat.completions.create(model=model, messages=messages, temperature=_ANALYSIS_TEMPERATURE)
+    cost.record_chat(response, "analyze_content")
     result = response.choices[0].message.content
     result = _ensure_try_block(result, lang, messages, model)
     result = _postprocess(result, lang, _audio_is_garbled(_audio_part(text)))
@@ -596,6 +601,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
         ],
         max_tokens=2000
     )
+    cost.record_chat(response, "analyze_image")
 
     return _clean_cyrillic(response.choices[0].message.content, lang)
 
@@ -683,6 +689,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
         ],
         max_tokens=2000
     )
+    cost.record_chat(response, "analyze_caption")
     return _clean_cyrillic(response.choices[0].message.content, lang)
 
 
@@ -784,4 +791,5 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
         ],
         max_tokens=2000
     )
+    cost.record_chat(response, "analyze_account")
     return _clean_cyrillic(response.choices[0].message.content, lang)
