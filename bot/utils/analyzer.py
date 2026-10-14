@@ -6,6 +6,10 @@ from openai import OpenAI, AsyncOpenAI
 from bot.config import settings
 from bot.utils import cost
 
+# Таҳлил кўрсатмалари (system prompt) ўзгартирилса, бу қийматни ошириш керак:
+# шунда доимий кэшдаги эски натижалар ишлатилмайди.
+PROMPT_VERSION = "1"
+
 client = OpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
 async_client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
 

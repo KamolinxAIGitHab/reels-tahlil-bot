@@ -30,6 +30,9 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+env_float = _env_float  # boshqa modullar uchun ochiq nom
+
+
 # gpt-4o-mini-transcribe: daqiqasiga taxminiy narx (USD)
 STT_PRICE_PER_MIN = _env_float("STT_PRICE_PER_MIN", 0.003)
 # OpenAI Usage sahifasi bilan taqqoslab tuzatish koeffitsienti (1.0 = o'zgartirmaslik)

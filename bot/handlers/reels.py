@@ -19,8 +19,8 @@ from bot.utils.downloader import (
 )
 from bot.utils import stats
 from bot.utils import cost as cost_utils
-from bot.utils.stt import transcribe_audio, UnclearAudioError
-from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_caption_only, analyze_account
+from bot.utils.stt import transcribe_audio, UnclearAudioError, STT_MODEL
+from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_caption_only, analyze_account, PROMPT_VERSION
 
 router = Router()
 
@@ -119,9 +119,13 @@ async def notify_cookie_expired(
 
 
 # Bir xil Reels/post uchun natija qayta Instagram va OpenAI'ga so'rov yubormasdan
-# beriladi. Kesh xotirada saqlanadi (bot qayta ishga tushsa tozalanadi).
+# beriladi. Kesh ikki qavatli: tezkor xotira (24 soat) va doimiy baza (stats.db, standart 30 kun,
+# bot qayta ishga tushsa ham saqlanadi). Natija kaliti PROMPT_VERSION'ga, transkripsiya
+# kaliti STT_MODEL'ga bog'langan: ular o'zgarsa, eski yozuv ishlatilmaydi.
 RESULT_CACHE_TTL_SECONDS = 24 * 60 * 60
 RESULT_CACHE_MAX_ITEMS = 300
+CACHE_TTL_DAYS = cost_utils.env_float("CACHE_TTL_DAYS", 30.0)
+CACHE_DB_MAX_ROWS = 5000
 _SHORTCODE_PATTERN = re.compile(r"instagram\.com/(?:reels?|p|tv)/([A-Za-z0-9_\-]+)", re.IGNORECASE)
 _result_cache: dict[tuple[str, str], tuple[float, str]] = {}
 
@@ -134,13 +138,18 @@ def _cache_key(url: str, lang: str) -> tuple[str, str] | None:
 def cache_get(url: str, lang: str) -> str | None:
     key = _cache_key(url, lang)
     item = _result_cache.get(key) if key else None
-    if not item:
-        return None
-    saved_at, text = item
-    if time.monotonic() - saved_at > RESULT_CACHE_TTL_SECONDS:
+    if item:
+        saved_at, text = item
+        if time.monotonic() - saved_at <= RESULT_CACHE_TTL_SECONDS:
+            return text
         _result_cache.pop(key, None)
+    if not key:
         return None
-    return text
+    row = stats.rc_get("result", key[0], lang, PROMPT_VERSION, CACHE_TTL_DAYS)
+    if not row:
+        return None
+    _result_cache[key] = (time.monotonic(), row[0])
+    return row[0]
 
 
 def cache_put(url: str, lang: str, text: str) -> None:
@@ -151,6 +160,7 @@ def cache_put(url: str, lang: str, text: str) -> None:
         oldest = min(_result_cache, key=lambda k: _result_cache[k][0])
         _result_cache.pop(oldest, None)
     _result_cache[key] = (time.monotonic(), text)
+    stats.rc_put("result", key[0], lang, PROMPT_VERSION, text, "", CACHE_DB_MAX_ROWS)
 
 
 # Audio transkripsiyasi tildan mustaqil saqlanadi: bir xil Reels turli tilda
@@ -162,13 +172,18 @@ _transcript_cache: dict[str, tuple[float, str, str]] = {}
 def transcript_get(url: str):
     key = _cache_key(url, "")
     item = _transcript_cache.get(key[0]) if key else None
-    if not item:
-        return None
-    saved_at, text, caption = item
-    if time.monotonic() - saved_at > RESULT_CACHE_TTL_SECONDS:
+    if item:
+        saved_at, text, caption = item
+        if time.monotonic() - saved_at <= RESULT_CACHE_TTL_SECONDS:
+            return text, caption
         _transcript_cache.pop(key[0], None)
+    if not key:
         return None
-    return text, caption
+    row = stats.rc_get("transcript", key[0], "", STT_MODEL, CACHE_TTL_DAYS)
+    if not row:
+        return None
+    _transcript_cache[key[0]] = (time.monotonic(), row[0], row[1])
+    return row[0], row[1]
 
 
 def transcript_put(url: str, text: str, caption) -> None:
@@ -179,6 +194,7 @@ def transcript_put(url: str, text: str, caption) -> None:
         oldest = min(_transcript_cache, key=lambda k: _transcript_cache[k][0])
         _transcript_cache.pop(oldest, None)
     _transcript_cache[key[0]] = (time.monotonic(), text, caption or "")
+    stats.rc_put("transcript", key[0], "", STT_MODEL, text, caption or "", CACHE_DB_MAX_ROWS)
 
 OPENAI_CREDIT_MESSAGES = {
     "lang_kirill": (
@@ -568,6 +584,11 @@ async def cmd_xarajat(message: Message):
         limit_parts.append(f"ой {usd(cost_utils.LIMIT_MONTH)} (ишлатилган {c['month_usd'] / cost_utils.LIMIT_MONTH * 100:.0f}%)")
     if limit_parts:
         lines.append("🎯 Огоҳлантириш лимити: " + ", ".join(limit_parts))
+    if c["month_cache_hits"]:
+        saved = ""
+        if c["avg_per_request"] is not None:
+            saved = f", тахминий тежам ≈ {usd(c['month_cache_hits'] * c['avg_per_request'])}"
+        lines.append(f"♻️ Кэшдан берилган такрорий сўровлар (бу ой): {c['month_cache_hits']} та{saved}")
     alerts = stats.recent_alerts(4)
     if alerts:
         from datetime import datetime, timedelta

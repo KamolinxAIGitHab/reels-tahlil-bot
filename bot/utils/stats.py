@@ -238,6 +238,15 @@ def get_cost_summary() -> dict:
         cur.execute("SELECT MIN(timestamp) FROM cost_log")
         first_ts = cur.fetchone()[0]
 
+        month_cache_hits = 0
+        if first_ts:
+            cur.execute(
+                "SELECT COUNT(*) FROM analysis_log WHERE error_type = 'cache_hit' AND timestamp >= ? "
+                "AND strftime('%Y-%m', timestamp, '+5 hours') = strftime('%Y-%m', 'now', '+5 hours')",
+                (first_ts,),
+            )
+            month_cache_hits = int(cur.fetchone()[0])
+
         # O'rtacha narx adolatli chiqishi uchun so'rovlar ham faqat xarajat
         # yozuvi boshlangan paytdan keyingilar bo'yicha sanaladi
         if first_ts:
@@ -273,6 +282,7 @@ def get_cost_summary() -> dict:
             "all_usd": all_usd, "all_calls": all_calls,
             "by_label": by_label,
             "month_requests": month_requests,
+            "month_cache_hits": month_cache_hits,
             "avg_per_request": (month_usd / month_requests) if month_requests else None,
             "forecast_month_usd": forecast,
             "tracking_since": first_ts,
@@ -368,3 +378,75 @@ def recent_alerts(limit: int = 6) -> list[tuple[str, int, str]]:
         return [(r[0], int(r[1]), r[2]) for r in cur.fetchall()]
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Doimiy natija keshi (result_cache): bot qayta ishga tushganda ham saqlanadi.
+# Foydalanuvchi ma'lumoti saqlanmaydi: faqat ochiq Reels natijasi/transkripsiyasi.
+# ---------------------------------------------------------------------------
+
+def init_result_cache_table() -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS result_cache (
+                kind TEXT NOT NULL,
+                key TEXT NOT NULL,
+                lang TEXT NOT NULL,
+                version TEXT NOT NULL,
+                text TEXT NOT NULL,
+                caption TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (kind, key, lang, version)
+            )
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+init_result_cache_table()
+
+
+def rc_get(kind: str, key: str, lang: str, version: str, ttl_days: float):
+    """(text, caption) yoki None. Muddati o'tgan yoki versiyasi boshqa yozuv hisobga olinmaydi."""
+    try:
+        from datetime import timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=ttl_days)).isoformat()
+        conn = _connect()
+        try:
+            row = conn.execute(
+                "SELECT text, caption FROM result_cache "
+                "WHERE kind = ? AND key = ? AND lang = ? AND version = ? AND created_at >= ?",
+                (kind, key, lang, version, cutoff),
+            ).fetchone()
+            return (row[0], row[1]) if row else None
+        finally:
+            conn.close()
+    except Exception as e:
+        logging.error(f"result_cache o'qib bo'lmadi: {e}")
+        return None
+
+
+def rc_put(kind: str, key: str, lang: str, version: str, text: str, caption: str = "", max_rows: int = 5000) -> None:
+    try:
+        conn = _connect()
+        try:
+            conn.execute(
+                "INSERT OR REPLACE INTO result_cache (kind, key, lang, version, text, caption, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (kind, key, lang, version, text, caption or "", datetime.now(timezone.utc).isoformat()),
+            )
+            # Baza cheksiz o'smasligi uchun eng eskilari o'chiriladi
+            conn.execute(
+                "DELETE FROM result_cache WHERE rowid IN "
+                "(SELECT rowid FROM result_cache ORDER BY created_at DESC LIMIT -1 OFFSET ?)",
+                (max_rows,),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        logging.error(f"result_cache'ga yozib bo'lmadi: {e}")
