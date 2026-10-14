@@ -18,6 +18,7 @@ from bot.utils.downloader import (
     CookieExpiredError, PrivateContentError, VideoPostError, is_rate_limited,
 )
 from bot.utils import stats
+from bot.utils import cost as cost_utils
 from bot.utils.stt import transcribe_audio, UnclearAudioError
 from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_caption_only, analyze_account
 
@@ -560,6 +561,13 @@ async def cmd_xarajat(message: Message):
         lines.append(f"📈 Ой охиригача тахмин: {usd(c['forecast_month_usd'])}")
     else:
         lines.append("📈 Ой охиригача тахмин: камида 1 кунлик маълумот йиғилгач кўрсатилади")
+    limit_parts = []
+    if cost_utils.LIMIT_DAY > 0:
+        limit_parts.append(f"кун {usd(cost_utils.LIMIT_DAY)} (ишлатилган {c['today_usd'] / cost_utils.LIMIT_DAY * 100:.0f}%)")
+    if cost_utils.LIMIT_MONTH > 0:
+        limit_parts.append(f"ой {usd(cost_utils.LIMIT_MONTH)} (ишлатилган {c['month_usd'] / cost_utils.LIMIT_MONTH * 100:.0f}%)")
+    if limit_parts:
+        lines.append("🎯 Огоҳлантириш лимити: " + ", ".join(limit_parts))
     if c["by_label"]:
         lines.append("\n🔎 Бу ой, тури бўйича:")
         for label, calls, total in c["by_label"]:

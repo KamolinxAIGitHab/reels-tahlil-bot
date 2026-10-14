@@ -279,3 +279,80 @@ def get_cost_summary() -> dict:
         }
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Xarajat limiti ogohlantirishlari (cost_alert). Har bir chegara bir marta yoziladi.
+# ---------------------------------------------------------------------------
+
+def init_alert_table() -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cost_alert (
+                key TEXT PRIMARY KEY,
+                text TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                sent INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+init_alert_table()
+
+
+def cost_totals() -> tuple[float, float]:
+    """(bugungi, shu oydagi) xarajat, USD. Kun va oy UTC+5 bo'yicha."""
+    conn = _connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT COALESCE(SUM(cost_usd), 0) FROM cost_log "
+            "WHERE date(timestamp, '+5 hours') = date('now', '+5 hours')"
+        )
+        today = float(cur.fetchone()[0])
+        cur.execute(
+            "SELECT COALESCE(SUM(cost_usd), 0) FROM cost_log "
+            "WHERE strftime('%Y-%m', timestamp, '+5 hours') = strftime('%Y-%m', 'now', '+5 hours')"
+        )
+        month = float(cur.fetchone()[0])
+        return today, month
+    finally:
+        conn.close()
+
+
+def add_alert(key: str, text: str, sent: int = 0) -> bool:
+    """Ogohlantirishni yozadi. Shu kalit avval yozilgan bo'lsa False qaytaradi."""
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO cost_alert (key, text, created_at, sent) VALUES (?, ?, ?, ?)",
+            (key, text, datetime.now(timezone.utc).isoformat(), sent),
+        )
+        conn.commit()
+        return cur.rowcount == 1
+    finally:
+        conn.close()
+
+
+def pending_alerts() -> list[tuple[str, str]]:
+    conn = _connect()
+    try:
+        cur = conn.execute("SELECT key, text FROM cost_alert WHERE sent = 0 ORDER BY created_at")
+        return [(r[0], r[1]) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def mark_alert_sent(key: str) -> None:
+    conn = _connect()
+    try:
+        conn.execute("UPDATE cost_alert SET sent = 1 WHERE key = ?", (key,))
+        conn.commit()
+    finally:
+        conn.close()
