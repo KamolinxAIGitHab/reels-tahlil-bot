@@ -516,7 +516,8 @@ async def cmd_start(message: Message):
         "🖼 Instagram rasm / расм постлари\n"
         "🎠 Instagram karusel / карусель постлари\n"
         "📝 Instagram matn / матн постлари\n"
-        "🎙 Telegram ovozli xabar / овозли хабар\n\n"
+        "🎙 Telegram ovozli xabar / овозли хабар\n"
+        "🎞 Video fayl / Видео файл (Reels ochilmasa / если Reels не открывается)\n\n"
         "🌐 Tilni tanlang / Тилни танланг / Выберите язык:",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
@@ -546,6 +547,7 @@ async def cmd_help(message: Message):
             "• Проверит факты\n"
             "• Даст оценку контента\n"
             "• Отправьте голосовое — бот проанализирует\n"
+            "• Reels не открывается? Отправьте видео или файл (до 20 МБ, до 3 минут)\n"
             "• 🔴 Анализ аккаунтов временно недоступен\n"
             "• 🔴 YouTube Shorts — временно не работает\n\n"
             "⚙️ Команды:\n"
@@ -565,6 +567,7 @@ async def cmd_help(message: Message):
             "• Faktlarni tekshiradi\n"
             "• Kontent bahosini beradi\n"
             "• Ovozli xabar yuboring — bot tahlil qiladi\n"
+            "• Reels ochilmasa, video yoki fayl yuboring (20 MB gacha, 3 daqiqagacha)\n"
             "• 🔴 Akkount tahlili vaqtincha ishlamaydi\n"
             "• 🔴 YouTube Shorts — vaqtincha ishlamaydi\n\n"
             "⚙️ Buyruqlar:\n"
@@ -584,6 +587,7 @@ async def cmd_help(message: Message):
             "• Фактларни текширади\n"
             "• Контент баҳосини беради\n"
             "• Овозли хабар юборинг — бот таҳлил қилади\n"
+            "• Reels очилмаса, видео ёки файл юборинг (20 МБ гача, 3 дақиқагача)\n"
             "• 🔴 Аккаунт таҳлили вақтинча ишламайди\n"
             "• 🔴 YouTube Shorts — вақтинча ишламайди\n\n"
             "⚙️ Буйруқлар:\n"
@@ -1495,8 +1499,9 @@ async def process_reel(message: Message, url: str):
                 COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"])
                 + VIDEO_FILE_HINT.get(lang, VIDEO_FILE_HINT["lang_kirill"])
             )
-        elif "http error 400" in err:
-            # Instagram aynan shu havola uchun 400 qaytardi (o'chirilgan, cheklangan
+        elif "http error 400" in err or "empty media response" in err:
+            # Instagram aynan shu havola uchun 400 yoki bo'sh javob ("empty media
+            # response") qaytardi (o'chirilgan, cheklangan
             # yoki video bo'lmagan kontent). Cookie va limit bilan bog'liq emas.
             stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "bad_link", str(e))
             bad_link_messages = {
