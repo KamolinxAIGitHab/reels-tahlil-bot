@@ -18,6 +18,7 @@ from bot.utils.downloader import (
     download_reels_audio, download_instagram_image, download_account_posts,
     download_youtube_shorts, get_youtube_subtitles, VideoTooLongError, AudioExtractionFailedError,
     CookieExpiredError, PrivateContentError, VideoPostError, is_rate_limited,
+    ReelTooLongError, MAX_REEL_SECONDS,
 )
 from bot.utils import stats
 from bot.utils import cost as cost_utils
@@ -28,7 +29,24 @@ router = Router()
 
 ADMIN_USER_ID = 47575298
 
-user_language: dict[int, str] = {}
+class _PersistentLanguages(dict):
+    """Foydalanuvchi tili: xotirada (tezkor) va stats.db'da (bot qayta ishga
+    tushganda ham saqlanadi). Avval xotiraga, topilmasa bazaga qaraydi."""
+
+    def get(self, key, default=None):
+        value = dict.get(self, key)
+        if value is None:
+            value = stats.get_user_language(key)
+            if value is not None:
+                dict.__setitem__(self, key, value)
+        return value if value is not None else default
+
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, value)
+        stats.set_user_language(key, value)
+
+
+user_language = _PersistentLanguages()
 
 RESULT_HEADERS = {
     "lang_kirill": "Таҳлил натижаси",
@@ -1307,6 +1325,13 @@ async def handle_reel(message: Message):
     await process_reel(message, url)
 
 
+REEL_TOO_LONG_MESSAGES = {
+    "lang_kirill": "⚠️ Видео жуда узун ({minutes} дақиқадан ортиқ). Қисқароқ Reels ҳаволасини юборинг.",
+    "lang_lotin": "⚠️ Video juda uzun ({minutes} daqiqadan ortiq). Qisqaroq Reels havolasini yuboring.",
+    "lang_rus": "⚠️ Видео слишком длинное (больше {minutes} минут). Отправьте ссылку на более короткий Reels.",
+}
+
+
 async def process_reel(message: Message, url: str):
     """Reels (yoki video bo'lib chiqqan /p/ post) havolasini yuklab,
     transkripsiya qiladi va tahlil natijasini yuboradi."""
@@ -1458,6 +1483,11 @@ async def process_reel(message: Message, url: str):
             await status_msg.edit_text("⏳ Instagram javob berishda kechikmoqda. Keyinroq urinib ko'ring.")
         else:
             await status_msg.edit_text("⏳ Instagram жавоб беришда кечикмоқда. Кейинроқ уриниб кўринг.")
+    except ReelTooLongError as e:
+        stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "other", f"video juda uzun: {e.duration}s")
+        await status_msg.edit_text(
+            REEL_TOO_LONG_MESSAGES.get(lang, REEL_TOO_LONG_MESSAGES["lang_kirill"]).format(minutes=MAX_REEL_SECONDS // 60)
+        )
     except PrivateContentError:
         stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "private_content", "xususiy kontent")
         await status_msg.edit_text(PRIVATE_CONTENT_MESSAGES.get(lang, PRIVATE_CONTENT_MESSAGES["lang_kirill"]))

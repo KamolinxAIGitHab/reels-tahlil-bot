@@ -109,6 +109,46 @@ def _mark_cookie_dead() -> None:
     )
 
 
+# Cookie'ni "o'lik" deb belgilash uchun bitta havoladagi xato yetarli emas:
+# "login required" kabi xatolar ba'zi havolalarda (yoshga cheklangan kontent va h.k.)
+# cookie yaroqli bo'lsa ham chiqadi. Shuning uchun bunday xato 10 daqiqa ichida
+# kamida 2 ta turli havolada takrorlanishi kerak. Hisob darajasidagi aniq belgilar
+# (401, checkpoint, challenge) darhol hisobga olinadi.
+COOKIE_FAIL_WINDOW_SECONDS = 10 * 60
+COOKIE_FAIL_DISTINCT_URLS = 2
+_STRONG_COOKIE_MARKERS = (
+    "http error 401",
+    "401: unauthorized",
+    "checkpoint_required",
+    "challenge_required",
+)
+_cookie_failures: dict[str, float] = {}
+
+
+def _should_mark_cookie_dead(url: str, error: Exception) -> bool:
+    msg = str(error).lower()
+    if any(k in msg for k in _STRONG_COOKIE_MARKERS):
+        return True
+    now = time.monotonic()
+    for key in [k for k, t in _cookie_failures.items() if now - t > COOKIE_FAIL_WINDOW_SECONDS]:
+        _cookie_failures.pop(key, None)
+    _cookie_failures[(url or "").split("?")[0]] = now
+    return len(_cookie_failures) >= COOKIE_FAIL_DISTINCT_URLS
+
+
+# Reels/video post uchun eng uzun davomiylik: undan uzun video yuklanmaydi
+# (OpenAI STT xarajati va 25 MB chegarasi uchun). REEL_MAX_SECONDS bilan o'zgartiriladi.
+MAX_REEL_SECONDS = int(os.environ.get("REEL_MAX_SECONDS", "300"))
+
+
+class ReelTooLongError(Exception):
+    """Video belgilangan davomiylikdan uzun."""
+
+    def __init__(self, duration):
+        self.duration = duration
+        super().__init__(f"Video uzunligi {duration} soniya, chegara {MAX_REEL_SECONDS}")
+
+
 def _is_cookie_expired(e: Exception) -> bool:
     """Berilgan xato Instagram cookie yaroqsiz bo'lganini bildiradimi
     (LoginRequired, HTTP 401, login sahifasiga yo'naltirish va h.k.)."""
@@ -231,7 +271,7 @@ async def download_reels_audio(url: str):
     So'rovlar soni kamaytirilgan: cookie bilan boshlanadi (anonim so'rovlar
     server IP'sidan doim limitga uchraydi), caption esa alohida so'rovsiz,
     yt-dlp'ning o'z javobidan ('description') olinadi. Cookie yaroqsiz bo'lsa,
-    bir marta anonim urinib ko'riladi va cookie 15 daqiqaga 'o'lik' deb
+    bir marta anonim urinib ko'riladi va cookie 30 daqiqaga 'o'lik' deb
     belgilanadi — shu vaqt ichida faqat anonim urinish bo'ladi.
     used_cookie — cookie ishlatilgan so'rovni bildiradi (statistika uchun).
     Caption topilmasa, bo'sh satr qaytariladi."""
@@ -244,8 +284,21 @@ async def download_reels_audio(url: str):
 
     def _extract(use_cookies: bool) -> str:
         """Videoni yuklaydi va caption'ni qaytaradi."""
-        with yt_dlp.YoutubeDL(_build_ydl_opts(tmp_dir, use_cookies=use_cookies)) as ydl:
+        too_long = []
+
+        def _duration_filter(info, *, incomplete=False):
+            duration = info.get("duration")
+            if duration and duration > MAX_REEL_SECONDS:
+                too_long.append(duration)
+                return "video juda uzun"
+            return None
+
+        opts = _build_ydl_opts(tmp_dir, use_cookies=use_cookies)
+        opts["match_filter"] = _duration_filter
+        with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
+        if too_long:
+            raise ReelTooLongError(too_long[0])
         if isinstance(info, dict):
             return (info.get("description") or "").strip()
         return ""
@@ -270,10 +323,11 @@ async def download_reels_audio(url: str):
         used_cookie = has_cookie_source
         try:
             caption = _extract_with_retry()
+            _cookie_failures.clear()
         except Exception as e:
             if _is_cookie_expired(e):
                 logging.error(f"Instagram cookie xatosi (video yuklashda): {e}")
-                if has_cookie_source:
+                if has_cookie_source and _should_mark_cookie_dead(url, e):
                     _mark_cookie_dead()
                 raise CookieExpiredError("Instagram cookie eskirgan (video yuklashda)") from e
             if _is_private_content(e):
@@ -520,7 +574,8 @@ async def download_instagram_image(url: str):
         except Exception as e:
             if _is_cookie_expired(e):
                 logging.error(f"Instagram cookie xatosi (post o'qishda): {e}")
-                _mark_cookie_dead()
+                if _should_mark_cookie_dead(url, e):
+                    _mark_cookie_dead()
                 raise CookieExpiredError("Instagram cookie eskirgan (post o'qishda)") from e
             raise
 

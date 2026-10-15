@@ -43,12 +43,56 @@ def init_db() -> None:
             )
         except sqlite3.OperationalError:
             pass
+        # Foydalanuvchi tili: bot qayta ishga tushganda ham saqlanishi uchun
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_prefs (
+                user_id INTEGER PRIMARY KEY,
+                language TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
         conn.commit()
     finally:
         conn.close()
 
 
 init_db()
+
+
+def get_user_language(user_id: int) -> str | None:
+    """Foydalanuvchi tanlagan tilni qaytaradi (yo'q yoki xato bo'lsa None)."""
+    try:
+        conn = _connect()
+        try:
+            row = conn.execute(
+                "SELECT language FROM user_prefs WHERE user_id = ?", (user_id,)
+            ).fetchone()
+            return row[0] if row and row[0] in LANGUAGES else None
+        finally:
+            conn.close()
+    except Exception as e:
+        logging.error(f"user_prefs o'qib bo'lmadi: {e}")
+        return None
+
+
+def set_user_language(user_id: int, language: str) -> None:
+    """Foydalanuvchi tilini saqlaydi. Xato bo'lsa faqat logga yoziladi."""
+    if language not in LANGUAGES:
+        return
+    try:
+        conn = _connect()
+        try:
+            conn.execute(
+                "INSERT OR REPLACE INTO user_prefs (user_id, language, updated_at) VALUES (?, ?, ?)",
+                (user_id, language, datetime.now(timezone.utc).isoformat()),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        logging.error(f"user_prefs'ga yozib bo'lmadi: {e}")
 
 
 def log_analysis(
