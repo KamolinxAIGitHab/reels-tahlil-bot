@@ -260,6 +260,15 @@ def _links_block(lang: str, caption: str, own_url: str = "") -> str:
     return f"\n\n🔗 <b>{html.escape(title)}</b>\n" + "\n".join(f"<code>{html.escape(u)}</code>" for u in links)
 
 
+async def _send_long(status_msg, message, text: str, parse_mode=None) -> None:
+    """Natijani yuboradi: birinchi bo'lak status xabarini almashtiradi, qolganlari alohida xabarlar
+    bo'lib ketma-ket yuboriladi (har biri Telegram chegarasidan oshmaydi)."""
+    parts = _split_message(text)
+    await status_msg.edit_text(parts[0], parse_mode=parse_mode)
+    for part in parts[1:]:
+        await message.answer(part, parse_mode=parse_mode)
+
+
 def _head_tail(text: str, limit: int = 4000):
     parts = _split_message(text, limit)
     return parts[0], "\n".join(parts[1:])
@@ -1046,12 +1055,7 @@ async def handle_post(message: Message):
                 fallback_used = True
                 logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_post): user_id={message.from_user.id} url={url}")
 
-        if len(result) > 4000:
-            _head, _tail = _head_tail(result)
-            await status_msg.edit_text(_head)
-            await message.answer(_tail)
-        else:
-            await status_msg.edit_text(result)
+        await _send_long(status_msg, message, result, None)
 
         stats.log_analysis(message.from_user.id, "instagram_post", lang, "success", fallback_used=1 if fallback_used else 0)
     except asyncio.TimeoutError:
@@ -1207,12 +1211,7 @@ async def handle_voice(message: Message):
         if voice.duration is not None and voice.duration < SHORT_VOICE_SECONDS:
             result_text += "\n\n" + SHORT_VOICE_NOTES.get(lang, SHORT_VOICE_NOTES["lang_kirill"])
 
-        if len(result_text) > 4000:
-            _head, _tail = _head_tail(result_text)
-            await status_msg.edit_text(_head, parse_mode="HTML")
-            await message.answer(_tail, parse_mode="HTML")
-        else:
-            await status_msg.edit_text(result_text, parse_mode="HTML")
+        await _send_long(status_msg, message, result_text, "HTML")
 
         stats.log_analysis(message.from_user.id, "voice", lang, "success", fallback_used=1 if fallback_used else 0)
 
@@ -1379,12 +1378,7 @@ async def handle_video_file(message: Message):
             return
 
         result_text = f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n{_rich(analysis)}"
-        if len(result_text) > 4000:
-            _head, _tail = _head_tail(result_text)
-            await status_msg.edit_text(_head, parse_mode="HTML")
-            await message.answer(_tail, parse_mode="HTML")
-        else:
-            await status_msg.edit_text(result_text, parse_mode="HTML")
+        await _send_long(status_msg, message, result_text, "HTML")
 
         stats.log_analysis(user_id, "video_file", lang, "success", fallback_used=1 if fallback_used else 0)
 
@@ -1560,12 +1554,7 @@ async def process_reel(message: Message, url: str):
         )
         cache_put(url, lang, result_text)
 
-        if len(result_text) > 4000:
-            _head, _tail = _head_tail(result_text)
-            await status_msg.edit_text(_head, parse_mode="HTML")
-            await message.answer(_tail, parse_mode="HTML")
-        else:
-            await status_msg.edit_text(result_text, parse_mode="HTML")
+        await _send_long(status_msg, message, result_text, "HTML")
 
         _recent_http400.clear()
         stats.log_analysis(
@@ -1700,12 +1689,7 @@ async def handle_youtube(message: Message):
                 f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n"
                 f"{_rich(analysis)}"
             )
-            if len(result_text) > 4000:
-                _head, _tail = _head_tail(result_text)
-                await status_msg.edit_text(_head, parse_mode="HTML")
-                await message.answer(_tail, parse_mode="HTML")
-            else:
-                await status_msg.edit_text(result_text, parse_mode="HTML")
+            await _send_long(status_msg, message, result_text, "HTML")
 
             stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "success")
             return
@@ -1805,12 +1789,7 @@ async def handle_youtube(message: Message):
             f"{_links_block(lang, video_caption)}"
         )
 
-        if len(result_text) > 4000:
-            _head, _tail = _head_tail(result_text)
-            await status_msg.edit_text(_head, parse_mode="HTML")
-            await message.answer(_tail, parse_mode="HTML")
-        else:
-            await status_msg.edit_text(result_text, parse_mode="HTML")
+        await _send_long(status_msg, message, result_text, "HTML")
 
         stats.log_analysis(message.from_user.id, "youtube_shorts", lang, "success", fallback_used=1 if fallback_used else 0)
 
