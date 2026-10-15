@@ -279,10 +279,19 @@ def _remember_author(url: str, display: str, link: str) -> None:
 
 
 def _author_from_instagram(url: str, info) -> None:
-    uid = info.get("uploader_id") if isinstance(info, dict) else None
+    if not isinstance(info, dict):
+        return
+    # Diagnostika: faqat ochiq hisob nomlari (maxfiy qiymat emas), uzunligi cheklangan.
+    logging.info(
+        "AUTHOR MAYDONLARI: uploader_id=%r channel=%r uploader=%r",
+        str(info.get("uploader_id"))[:40], str(info.get("channel"))[:40], str(info.get("uploader"))[:40],
+    )
     # Faqat raqamlardan iborat qiymat — foydalanuvchi nomi emas, ichki ID bo'lishi mumkin: havola noto'g'ri chiqadi.
-    if isinstance(uid, str) and _IG_HANDLE_RE.match(uid) and not uid.isdigit():
-        _remember_author(url, "@" + uid, f"https://www.instagram.com/{uid}/")
+    for key in ("uploader_id", "channel", "uploader"):
+        uid = info.get(key)
+        if isinstance(uid, str) and _IG_HANDLE_RE.match(uid) and not uid.isdigit():
+            _remember_author(url, "@" + uid, f"https://www.instagram.com/{uid}/")
+            return
 
 
 def _author_from_youtube(url: str, info) -> None:
