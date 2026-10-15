@@ -738,7 +738,7 @@ _STATS_TEXTS = {
 
 def _progress_bar(percent: int, width: int = 10) -> str:
     filled = max(0, min(width, round(width * percent / 100)))
-    return "▓" * filled + "░" * (width - filled)
+    return "🟩" * filled + "⬜" * (width - filled)
 
 
 def build_stats_text(s: dict, lang: str, is_admin: bool) -> str:
