@@ -294,7 +294,7 @@ _QUALITY_RULES = {
         "5. Числа и статистику без источника («1 из 100 тысяч», «800 миллионов "
         "токенов») отмечай в разделе «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено».\n"
         "6. Названия ИИ-инструментов пиши правильно: Claude (в аудио слышится "
-        "«клауд», «клод», «cloud»), ChatGPT, Gemini, Notebook LM, Midjourney, "
+        "«клауд», «клод», «cloud»), Claude Code (в аудио «cloud code», «клод код»), ChatGPT, Gemini, Notebook LM, Midjourney, "
         "Runway, Google Flow, Veo, Lyria, Google Pomelli, Grok, Perplexity, Canva, Firecrawl, Playwright, Composio, MCP, n8n, Zapier, Notion, Cursor. "
         "Такое название не записывай как команду («/cloud»).\n"
         "7. Если аудио искажено, бессмысленно или фраза повторяется, не достраивай "
@@ -494,7 +494,9 @@ def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o")
     cost.record_chat(response, "analyze_content")
     result = response.choices[0].message.content
     result = _ensure_try_block(result, lang, messages, model)
-    result = _postprocess(result, lang, _audio_is_garbled(_audio_part(text)))
+    # Рад жавоби (💡 қатори йўқ) учун бузуқлик текшируви керак эмас: у захира моделда такрорланади.
+    garbled = "💡" in (result or "") and _audio_is_garbled(_audio_part(text))
+    result = _postprocess(result, lang, garbled)
 
     return _clean_cyrillic(result, lang)
 
