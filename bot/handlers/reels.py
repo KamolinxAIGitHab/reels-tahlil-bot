@@ -1,6 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.filters import Command
+from aiogram.exceptions import TelegramBadRequest
 import asyncio
 from collections import deque
 import html
@@ -8,6 +9,7 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 import logging
 import time
 from urllib.parse import urlparse, parse_qs
@@ -32,6 +34,55 @@ RESULT_HEADERS = {
     "lang_kirill": "Таҳлил натижаси",
     "lang_lotin": "Tahlil natijasi",
     "lang_rus": "Результат анализа",
+}
+
+# Instagram ҳаволаси очилмаганда фойдаланувчига муқобил йўл кўрсатилади:
+# видеони файл сифатида юбориш (Instagram'га боғлиқ эмас)
+VIDEO_FILE_HINT = {
+    "lang_kirill": (
+        "\n\n💡 Видеони телефонга сақлаб (ёки экранни ёзиб) шу ерга файл сифатида "
+        "юборсангиз, бот уни Instagram'сиз таҳлил қилади."
+    ),
+    "lang_lotin": (
+        "\n\n💡 Videoni telefonga saqlab (yoki ekranni yozib) shu yerga fayl sifatida "
+        "yuborsangiz, bot uni Instagram'siz tahlil qiladi."
+    ),
+    "lang_rus": (
+        "\n\n💡 Сохраните видео на телефон (или запишите экран) и отправьте сюда файлом: "
+        "бот проанализирует его без Instagram."
+    ),
+}
+
+# Видео файл (юклаб юборилган) чекловлари
+MAX_TG_DOWNLOAD_BYTES = 20 * 1024 * 1024  # Telegram Bot API орқали юклаш чегараси
+MAX_VIDEO_FILE_SECONDS = 180  # узун видеолар харажатни оширмаслиги учун
+
+VIDEO_FILE_MESSAGES = {
+    "status": {
+        "lang_kirill": "⏳ Видео файл қайта ишланяпти...",
+        "lang_lotin": "⏳ Video fayl qayta ishlanmoqda...",
+        "lang_rus": "⏳ Видеофайл обрабатывается...",
+    },
+    "too_big": {
+        "lang_kirill": "⚠️ Файл ҳажми 20 МБ дан катта. Қисқароқ видео юборинг (Reels учун 90 сониягача).",
+        "lang_lotin": "⚠️ Fayl hajmi 20 MB dan katta. Qisqaroq video yuboring (Reels uchun 90 soniyagacha).",
+        "lang_rus": "⚠️ Размер файла больше 20 МБ. Отправьте видео покороче (для Reels до 90 секунд).",
+    },
+    "too_long": {
+        "lang_kirill": "⚠️ Видео 3 дақиқадан узун. Қисқароқ видео юборинг.",
+        "lang_lotin": "⚠️ Video 3 daqiqadan uzun. Qisqaroq video yuboring.",
+        "lang_rus": "⚠️ Видео длиннее 3 минут. Отправьте видео покороче.",
+    },
+    "no_audio": {
+        "lang_kirill": "❌ Видеода овоз топилмади ёки файлни ўқиб бўлмади. Бошқа файл юборинг.",
+        "lang_lotin": "❌ Videoda ovoz topilmadi yoki faylni o'qib bo'lmadi. Boshqa fayl yuboring.",
+        "lang_rus": "❌ В видео нет звука или файл не удалось прочитать. Отправьте другой файл.",
+    },
+    "error": {
+        "lang_kirill": "❌ Хато юз берди. Қайта уриниб кўринг.",
+        "lang_lotin": "❌ Xatolik yuz berdi. Qayta urinib ko'ring.",
+        "lang_rus": "❌ Произошла ошибка. Попробуйте снова.",
+    },
 }
 
 COOKIE_EXPIRED_USER_MESSAGES = {
@@ -654,7 +705,8 @@ async def cmd_stats(message: Message):
             f"  📸 Instagram пост: {src['instagram_post']}\n"
             f"  👤 Instagram аккаунт: {src['instagram_account']}\n"
             f"  🎥 YouTube Shorts: {src['youtube_shorts']}\n"
-            f"  🎤 Голосовое сообщение: {src['voice']}\n\n"
+            f"  🎤 Голосовое сообщение: {src['voice']}\n"
+            f"  🎞 Видеофайл: {src['video_file']}\n\n"
             f"📌 По языку (всего):\n"
             f"  🇺🇿 Узбекский кириллица: {lng['lang_kirill']}\n"
             f"  🔤 Узбекский латиница: {lng['lang_lotin']}\n"
@@ -683,7 +735,8 @@ async def cmd_stats(message: Message):
             f"  📸 Instagram post: {src['instagram_post']}\n"
             f"  👤 Instagram akkaunt: {src['instagram_account']}\n"
             f"  🎥 YouTube Shorts: {src['youtube_shorts']}\n"
-            f"  🎤 Ovozli xabar: {src['voice']}\n\n"
+            f"  🎤 Ovozli xabar: {src['voice']}\n"
+            f"  🎞 Video fayl: {src['video_file']}\n\n"
             f"📌 Til bo'yicha (jami):\n"
             f"  🇺🇿 O'zbek kirill: {lng['lang_kirill']}\n"
             f"  🔤 O'zbek lotin: {lng['lang_lotin']}\n"
@@ -712,7 +765,8 @@ async def cmd_stats(message: Message):
             f"  📸 Instagram пост: {src['instagram_post']}\n"
             f"  👤 Instagram аккаунт: {src['instagram_account']}\n"
             f"  🎥 YouTube Shorts: {src['youtube_shorts']}\n"
-            f"  🎤 Овозли хабар: {src['voice']}\n\n"
+            f"  🎤 Овозли хабар: {src['voice']}\n"
+            f"  🎞 Видео файл: {src['video_file']}\n\n"
             f"📌 Тил бўйича (жами):\n"
             f"  🇺🇿 Ўзбек кирилл: {lng['lang_kirill']}\n"
             f"  🔤 Ўзбек лотин: {lng['lang_lotin']}\n"
@@ -1101,6 +1155,148 @@ async def handle_voice(message: Message):
         if tmp_dir and os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
+def _video_source(message: Message):
+    """Хабарда видео файл бўлса (file_id, ҳажми, давомийлиги) қайтаради, акс ҳолда None.
+    Қўллаб-қувватланади: оддий видео, думалоқ видео (video_note) ва видео турдаги ҳужжат."""
+    if message.video:
+        v = message.video
+        return v.file_id, v.file_size, v.duration
+    if message.video_note:
+        v = message.video_note
+        return v.file_id, v.file_size, v.duration
+    doc = message.document
+    if doc and (doc.mime_type or "").startswith("video/"):
+        return doc.file_id, doc.file_size, None
+    return None
+
+
+async def _analyze_text_with_fallback(text: str, lang: str, user_id: int, context: str):
+    """analyze_content'ни чақиради; модерация рад этса gpt-4o-mini билан қайта уринади.
+    Қайтаради: (таҳлил матни, fallback_used) ёки иккала модел рад этса (None, False)."""
+    loop = asyncio.get_event_loop()
+    try:
+        analysis = await loop.run_in_executor(None, analyze_content, text, lang)
+        refused = is_moderation_refusal(analysis)
+    except BadRequestError as e:
+        err_msg = str(e).lower()
+        err_code = str(getattr(e, "code", "") or "").lower()
+        if "content_filter" not in err_msg and "content_filter" not in err_code and "moderation" not in err_msg:
+            raise
+        analysis = None
+        refused = True
+
+    if not refused:
+        return analysis, False
+
+    logging.warning(f"GPT-4o moderatsiya rad etishi ({context}): user_id={user_id}, gpt-4o-mini fallback urinilmoqda")
+    try:
+        analysis = await loop.run_in_executor(None, analyze_content, text, lang, "gpt-4o-mini")
+        fallback_refused = is_moderation_refusal(analysis)
+    except BadRequestError:
+        fallback_refused = True
+
+    if fallback_refused:
+        logging.warning(f"gpt-4o-mini fallback ham rad etdi ({context}): user_id={user_id}")
+        return None, False
+    logging.info(f"gpt-4o-mini fallback muvaffaqiyatli ({context}): user_id={user_id}")
+    return analysis, True
+
+
+@router.message(F.func(lambda message: _video_source(message) is not None))
+async def handle_video_file(message: Message):
+    """Фойдаланувчи юборган видео файлни таҳлил қилади (Instagram'га боғлиқ эмас):
+    файл юкланади → аудио ажратилади → STT → таҳлил. Овозли хабар ҳандлери (handle_voice)
+    билан бир хил занжир."""
+    user_id = message.from_user.id
+    lang = user_language.get(user_id, "lang_kirill")
+
+    def msg(key: str) -> str:
+        return VIDEO_FILE_MESSAGES[key].get(lang, VIDEO_FILE_MESSAGES[key]["lang_kirill"])
+
+    file_id, file_size, duration = _video_source(message)
+
+    if file_size and file_size > MAX_TG_DOWNLOAD_BYTES:
+        stats.log_analysis(user_id, "video_file", lang, "error", "other", f"fayl katta: {file_size}")
+        await message.answer(msg("too_big"))
+        return
+    if duration and duration > MAX_VIDEO_FILE_SECONDS:
+        stats.log_analysis(user_id, "video_file", lang, "error", "other", f"video uzun: {duration}s")
+        await message.answer(msg("too_long"))
+        return
+
+    status_msg = await message.answer(msg("status"))
+    tmp_dir = None
+    try:
+        file = await message.bot.get_file(file_id)
+        tmp_dir = tempfile.mkdtemp()
+        src_path = os.path.join(tmp_dir, "input_video")
+        mp3_path = os.path.join(tmp_dir, "audio.mp3")
+        await message.bot.download_file(file.file_path, src_path)
+
+        # Видеодан овозни ажратиш. -t: давомийлиги номаълум файлда (ҳужжат) ҳам
+        # фақат биринчи MAX_VIDEO_FILE_SECONDS сония олинади.
+        loop = asyncio.get_event_loop()
+        proc = await loop.run_in_executor(
+            None,
+            lambda: subprocess.run(
+                ["ffmpeg", "-y", "-i", src_path, "-vn", "-t", str(MAX_VIDEO_FILE_SECONDS),
+                 "-ar", "16000", "-ac", "1", mp3_path],
+                capture_output=True,
+                timeout=120,
+            ),
+        )
+        if proc.returncode != 0 or not os.path.exists(mp3_path) or os.path.getsize(mp3_path) == 0:
+            stats.log_analysis(user_id, "video_file", lang, "error", "other", "ovoz ajratilmadi")
+            await status_msg.edit_text(msg("no_audio"))
+            return
+
+        text = await loop.run_in_executor(None, transcribe_audio, mp3_path, None)
+        if not text or not text.strip():
+            stats.log_analysis(user_id, "video_file", lang, "error", "other", "nutq aniqlanmadi")
+            await status_msg.edit_text(msg("no_audio"))
+            return
+
+        analysis, fallback_used = await _analyze_text_with_fallback(text, lang, user_id, "handle_video_file")
+        if analysis is None:
+            stats.log_analysis(user_id, "video_file", lang, "error", "moderation", "refusal-heuristic+fallback")
+            await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
+            return
+
+        result_text = f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n{html.escape(analysis)}"
+        if len(result_text) > 4000:
+            _head, _tail = _head_tail(result_text)
+            await status_msg.edit_text(_head, parse_mode="HTML")
+            await message.answer(_tail, parse_mode="HTML")
+        else:
+            await status_msg.edit_text(result_text, parse_mode="HTML")
+
+        stats.log_analysis(user_id, "video_file", lang, "success", fallback_used=1 if fallback_used else 0)
+
+    except TelegramBadRequest as e:
+        if "too big" in str(e).lower():
+            stats.log_analysis(user_id, "video_file", lang, "error", "other", "fayl katta (Telegram)")
+            await status_msg.edit_text(msg("too_big"))
+        else:
+            logging.error(f"Video fayl Telegram xatosi: user_id={user_id} error={e}")
+            stats.log_analysis(user_id, "video_file", lang, "error", "other", str(e))
+            await status_msg.edit_text(msg("error"))
+    except UnclearAudioError:
+        stats.log_analysis(user_id, "video_file", lang, "error", "other", "audio sifati past")
+        await status_msg.edit_text(msg("no_audio"))
+    except subprocess.TimeoutExpired:
+        stats.log_analysis(user_id, "video_file", lang, "error", "download_error", "ffmpeg timeout")
+        await status_msg.edit_text(msg("no_audio"))
+    except Exception as e:
+        if await handle_openai_error(status_msg, lang, e, "handle_video_file", user_id, "video_file"):
+            return
+        logging.error(f"Video fayl tahlili xatosi: user_id={user_id} error={e}")
+        stats.log_analysis(user_id, "video_file", lang, "error", "other", str(e))
+        await status_msg.edit_text(msg("error"))
+    finally:
+        if tmp_dir and os.path.exists(tmp_dir):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 @router.message(F.text.func(lambda text: extract_reel_url(text) is not None))
 async def handle_reel(message: Message):
     url = extract_reel_url(message.text)
@@ -1288,11 +1484,17 @@ async def process_reel(message: Message, url: str):
                     "Или отправьте другую ссылку на Reels."
                 ),
             }
-            await status_msg.edit_text(rate_messages.get(lang, rate_messages["lang_kirill"]))
+            await status_msg.edit_text(
+                rate_messages.get(lang, rate_messages["lang_kirill"])
+                + VIDEO_FILE_HINT.get(lang, VIDEO_FILE_HINT["lang_kirill"])
+            )
         elif "http error 400" in err and register_http400(url):
             # Ketma-ket bir nechta turli havolada 400: muammo havolada emas, hisob yoki cookie'da.
             await notify_cookie_expired(message, lang, "instagram_reels", e, admin_text=HTTP400_ADMIN_MESSAGE)
-            await status_msg.edit_text(COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"]))
+            await status_msg.edit_text(
+                COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"])
+                + VIDEO_FILE_HINT.get(lang, VIDEO_FILE_HINT["lang_kirill"])
+            )
         elif "http error 400" in err:
             # Instagram aynan shu havola uchun 400 qaytardi (o'chirilgan, cheklangan
             # yoki video bo'lmagan kontent). Cookie va limit bilan bog'liq emas.
@@ -1314,7 +1516,10 @@ async def process_reel(message: Message, url: str):
                     "Проверьте ссылку и отправьте её ещё раз или отправьте другую ссылку на Reels."
                 ),
             }
-            await status_msg.edit_text(bad_link_messages.get(lang, bad_link_messages["lang_kirill"]))
+            await status_msg.edit_text(
+                bad_link_messages.get(lang, bad_link_messages["lang_kirill"])
+                + VIDEO_FILE_HINT.get(lang, VIDEO_FILE_HINT["lang_kirill"])
+            )
         else:
             stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "other", str(e))
             error_messages = {
@@ -1322,7 +1527,10 @@ async def process_reel(message: Message, url: str):
                 "lang_lotin": "❌ Xato yuz berdi. Iltimos, boshqa Reels havolasini yuboring.",
                 "lang_rus": "❌ Произошла ошибка. Пожалуйста, отправьте другую ссылку на Reels.",
             }
-            await status_msg.edit_text(error_messages.get(lang, error_messages["lang_kirill"]))
+            await status_msg.edit_text(
+                error_messages.get(lang, error_messages["lang_kirill"])
+                + VIDEO_FILE_HINT.get(lang, VIDEO_FILE_HINT["lang_kirill"])
+            )
     finally:
         if tmp_dir and os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir, ignore_errors=True)

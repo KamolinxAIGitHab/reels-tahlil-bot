@@ -8,7 +8,7 @@ _DATA_DIR = os.environ.get("STATS_DB_DIR",
 os.makedirs(_DATA_DIR, exist_ok=True)
 DB_PATH = os.path.join(_DATA_DIR, "stats.db")
 
-SOURCE_TYPES = ("instagram_reels", "instagram_post", "instagram_account", "youtube_shorts", "voice")
+SOURCE_TYPES = ("instagram_reels", "instagram_post", "instagram_account", "youtube_shorts", "voice", "video_file")
 LANGUAGES = ("lang_kirill", "lang_lotin", "lang_rus")
 ERROR_TYPES = ("instagram_limit", "openai_credit", "openai_auth", "moderation", "download_error", "other")
 
