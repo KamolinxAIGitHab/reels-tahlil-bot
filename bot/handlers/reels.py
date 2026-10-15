@@ -146,11 +146,16 @@ _LABEL_RE = re.compile(r"^((?:✅|⚠️|⚠|❌|💡|🎯|🚀|📝|🔍)\ufe0f
 
 _TRANSCRIPT_RE = re.compile(r"^📝[^\n]*:[ \t]*$", re.MULTILINE)
 _ANALYSIS_MARK_RE = re.compile(r"^🔍[ \t]*(?:Таҳлил|Tahlil|Анализ):[ \t]*\n?", re.MULTILINE)
+_ORIGINAL_CAPTION_LABELS = {
+    "lang_kirill": "Изоҳнинг асл нусхаси",
+    "lang_lotin": "Izohning asl nusxasi",
+    "lang_rus": "Оригинал подписи",
+}
 _QUOTE_OPEN = "<blockquote expandable>"
 _QUOTE_CLOSE = "</blockquote>"
 
 
-def _rich(analysis: str) -> str:
+def _rich(analysis: str, original_caption: str = "", lang: str = "lang_kirill") -> str:
     """Tahlil matnini Telegram HTML uchun tayyorlaydi: matn escape qilinadi, bo'lim
     sarlavhalari (✅/⚠️/❌/💡/🎯/🚀 ... :) qalin qilinadi. Model javobida transkripsiya
     tahlildan oldin keladi; bu yerda tahlil tepaga chiqariladi, transkripsiya esa pastda
@@ -166,6 +171,13 @@ def _rich(analysis: str) -> str:
     body = analysis[m.end():]
     if not transcript_body or not body.strip():
         return _LABEL_RE.sub(r"<b>\1</b>", html.escape(analysis))
+
+    # Izoh (caption) tarjima qilinadi; asl nusxasi yig'iladigan blok oxirida qoladi
+    # (tarjimada xato bo'lsa tekshirib ko'rish uchun). Tarjima aynan asl bilan bir xil bo'lsa — qo'shilmaydi.
+    original = (original_caption or "").strip()
+    if original and original not in transcript_body:
+        label = _ORIGINAL_CAPTION_LABELS.get(lang, _ORIGINAL_CAPTION_LABELS["lang_kirill"])
+        transcript_body += f"\n\n— {label} —\n{original}"
 
     out = _LABEL_RE.sub(r"<b>\1</b>", html.escape(head + body.lstrip("\n"))).rstrip()
     out += f"\n\n<b>{html.escape(transcript_title)}</b>\n{_QUOTE_OPEN}{html.escape(transcript_body)}{_QUOTE_CLOSE}"
@@ -1549,7 +1561,7 @@ async def process_reel(message: Message, url: str):
         result_text = (
             f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n"
             f"{_author_line(lang, author)}"
-            f"{_rich(analysis)}"
+            f"{_rich(analysis, reel_caption, lang)}"
             f"{_links_block(lang, reel_caption, url)}"
         )
         cache_put(url, lang, result_text)
@@ -1785,7 +1797,7 @@ async def handle_youtube(message: Message):
         result_text = (
             f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n"
             f"{_author_line(lang, yt_author)}"
-            f"{_rich(analysis)}"
+            f"{_rich(analysis, video_caption, lang)}"
             f"{_links_block(lang, video_caption)}"
         )
 
