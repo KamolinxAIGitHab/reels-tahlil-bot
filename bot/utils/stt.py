@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import subprocess
+from difflib import SequenceMatcher
 from typing import Optional
 
 from openai import OpenAI
@@ -16,6 +17,20 @@ MIN_MEAN_VOLUME_DB = -40.0
 
 class UnclearAudioError(Exception):
     """Audio juda qisqa yoki juda past ovozli — aniq nutq topilmadi."""
+
+
+def _echoes_prompt(text: str, prompt: Optional[str]) -> bool:
+    """Model nutq o'rniga unga berilgan ko'rsatma matnini (caption) qaytargan bo'lsa True.
+    Musiqali, nutqsiz videoda shunday bo'ladi. So'zlar ketma-ketligi 80% va undan ko'p
+    mos kelsa, bu aks-sado deb hisoblanadi."""
+    if not prompt or not text:
+        return False
+    tw = re.sub(r"[\W_]+", " ", text.lower()).split()
+    pw = re.sub(r"[\W_]+", " ", prompt.strip()[-_PROMPT_MAX_CHARS:].lower()).split()
+    if len(tw) < 4 or not pw:
+        return False
+    matched = sum(b.size for b in SequenceMatcher(None, tw, pw, autojunk=False).get_matching_blocks())
+    return matched / len(tw) >= 0.8
 
 
 def _probe_audio(file_path: str) -> tuple[Optional[float], Optional[float]]:
@@ -77,7 +92,7 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
     except Exception as e:
         logging.warning(f"Audio tekshiruvi muvaffaqiyatsiz, davom etilmoqda: {e}")
 
-    def _call(lang: Optional[str], want_language: bool, use_temperature: bool = True):
+    def _call(lang: Optional[str], want_language: bool, use_temperature: bool = True, use_prompt: bool = True):
         params = {"model": STT_MODEL}
         if use_temperature:
             params["temperature"] = 0
@@ -85,9 +100,9 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
             params["language"] = lang
         # Prompt'ning oxirgi qismi muhimroq: ko'rsatma oxirida turadi
         hint = _LANG_HINT if _USE_HINT else ""
-        if prompt or hint:
+        if (prompt and use_prompt) or hint:
             room = _PROMPT_MAX_CHARS - (len(hint) + 1 if hint else 0)
-            base = (prompt or "").strip()[-room:]
+            base = (prompt or "").strip()[-room:] if use_prompt else ""
             params["prompt"] = (base + "\n" + hint).strip() if hint else base
         if want_language:
             params["response_format"] = "verbose_json"
@@ -102,14 +117,17 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
     # qozoqcha/qirg'izcha deb belgilaydi — matn baribir GPT orqali
     # o'zbekchaga tarjima qilinadi.
     detect = STT_MODEL == "whisper-1" and not language
-    try:
-        response = _call(language, detect)
-    except Exception as e:
-        # Баъзи моделлар temperature параметрини қабул қилмаслиги мумкин: шунда уни олиб ташлаб қайтамиз
-        if "temperature" not in str(e).lower():
-            raise
-        logging.warning(f"STT temperature параметрисиз қайта уриниш: {e}")
-        response = _call(language, detect, use_temperature=False)
+    def _transcribe(use_prompt: bool):
+        try:
+            return _call(language, detect, True, use_prompt)
+        except Exception as e:
+            # Баъзи моделлар temperature параметрини қабул қилмаслиги мумкин: шунда уни олиб ташлаб қайтамиз
+            if "temperature" not in str(e).lower():
+                raise
+            logging.warning(f"STT temperature параметрисиз қайта уриниш: {e}")
+            return _call(language, detect, False, use_prompt)
+
+    response = _transcribe(True)
 
     cost.record_audio(duration, STT_MODEL)
 
@@ -118,6 +136,13 @@ def transcribe_audio(file_path: str, language: Optional[str] = None, prompt: Opt
         logging.info(f"WHISPER TIL: {detected or 'noma`lum'}")
 
     text = (response.text or "").strip()
+    # Нутқсиз (мусиқали) видеода модель caption'ни нутқ деб қайтаради. Бир марта caption'сиз қайта уриниб кўрамиз:
+    # ҳақиқий нутқ бўлса чиқади, бўлмаса пастдаги текширувлар «нутқ топилмади» дейди.
+    if _echoes_prompt(text, prompt):
+        logging.warning("STT: model caption matnini qaytardi, caption'siz qayta uriniladi")
+        response = _transcribe(False)
+        cost.record_audio(duration, STT_MODEL)
+        text = (response.text or "").strip()
     # Musiqa/shovqin ustidan Whisper ba'zan faqat emoji yoki belgilar
     # to'qiydi — harf deyarli bo'lmasa, nutq yo'q deb hisoblanadi.
     if _LANG_HINT_MARK in text.lower():
