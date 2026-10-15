@@ -690,7 +690,9 @@ async def cmd_xarajat(message: Message):
 @router.message(Command("stats"))
 async def cmd_stats(message: Message):
     lang = user_language.get(message.from_user.id, "lang_kirill")
-    s = stats.get_stats()
+    # Admin — umumiy statistika; boshqa foydalanuvchi faqat o'zinikini ko'radi.
+    is_admin = message.from_user.id == ADMIN_USER_ID
+    s = stats.get_stats(None if is_admin else message.from_user.id)
     et = s["today_error_types"]
     src = s["by_source"]
     lng = s["by_lang"]
@@ -797,6 +799,13 @@ async def cmd_stats(message: Message):
             f"🔄 Cookie билан юклаш: {s['cookie_fallback_count']} та"
             f"{hourly_text}"
         )
+    if not is_admin:
+        # Ichki texnik ko'rsatkichlar (xato turlari, fallback, cookie) faqat admin uchun.
+        text = "\n".join(
+            line for line in text.split("\n")
+            if not (line.startswith("    - ") or line.startswith("🔄"))
+        )
+        text = text.replace("\n\n\n", "\n\n").rstrip()
     await message.answer(text)
 
 @router.callback_query(F.data.in_({"lang_kirill", "lang_lotin", "lang_rus"}))

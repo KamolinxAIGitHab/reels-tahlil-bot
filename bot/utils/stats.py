@@ -132,13 +132,19 @@ def log_analysis(
         logging.error(f"Statistika bazasiga yozishda xato: {e}")
 
 
-def get_stats() -> dict:
-    """/stats buyrug'i uchun barcha kerakli agregatsiyalarni qaytaradi."""
+def get_stats(user_id: int | None = None) -> dict:
+    """/stats buyrug'i uchun barcha kerakli agregatsiyalarni qaytaradi.
+    user_id berilsa, hisob-kitob faqat shu foydalanuvchining yozuvlari bo'yicha
+    bajariladi (oddiy foydalanuvchi faqat o'z statistikasini ko'rishi uchun);
+    None bo'lsa — umumiy (faqat admin uchun)."""
     conn = _connect()
     try:
         cur = conn.cursor()
 
         def count(where: str = "", params: tuple = ()) -> int:
+            if user_id is not None:
+                where += (" AND" if where else " WHERE") + " user_id = ?"
+                params = tuple(params) + (user_id,)
             cur.execute(f"SELECT COUNT(*) FROM analysis_log{where}", params)
             return cur.fetchone()[0]
 
@@ -176,12 +182,16 @@ def get_stats() -> dict:
         # shuning uchun today_error statistikasi buzilmaydi).
         cookie_fallback_count = count(" WHERE error_type = 'cookie_fallback'")
 
-        cur.execute(
+        hourly_sql = (
             "SELECT strftime('%H', timestamp, '+5 hours') as hour, COUNT(*) as count "
             "FROM analysis_log "
             "WHERE date(timestamp, '+5 hours') = date('now', '+5 hours') "
-            "GROUP BY hour ORDER BY hour"
         )
+        hourly_params: tuple = ()
+        if user_id is not None:
+            hourly_sql += "AND user_id = ? "
+            hourly_params = (user_id,)
+        cur.execute(hourly_sql + "GROUP BY hour ORDER BY hour", hourly_params)
         hourly = {hour: cnt for hour, cnt in cur.fetchall()}
 
         return {
