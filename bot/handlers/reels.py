@@ -141,6 +141,15 @@ def register_http400(url: str) -> bool:
     return len({k for _, k in _recent_http400}) >= HTTP400_ACCOUNT_THRESHOLD
 
 
+_LABEL_RE = re.compile(r"^((?:✅|⚠️|⚠|❌|💡|🎯|🚀|📝|🔍)\ufe0f?[ \t]*[^:\n<>]{2,60}:)", re.MULTILINE)
+
+
+def _rich(analysis: str) -> str:
+    """Tahlil matnini Telegram HTML uchun tayyorlaydi: matn escape qilinadi,
+    bo'lim sarlavhalari (✅/⚠️/❌/💡/🎯/🚀/📝 ... :) qalin qilinadi."""
+    return _LABEL_RE.sub(r"<b>\1</b>", html.escape(analysis))
+
+
 def _split_message(text: str, limit: int = 4000) -> list:
     """Uzun matnni qator chegarasidan bo'lib, so'z/qator o'rtasida uzilmasligini ta'minlaydi."""
     parts = []
@@ -687,126 +696,107 @@ async def cmd_xarajat(message: Message):
     await message.answer("\n".join(lines))
 
 
+_STATS_TEXTS = {
+    "lang_kirill": {
+        "title_user": "📊 Сизнинг статистикангиз", "title_admin": "📊 Умумий статистика (админ)",
+        "today": "Бугун", "week": "Ҳафта", "month": "Ой", "total": "Жами",
+        "rate": "Бугунги муваффақият", "types": "📌 Таҳлил турлари", "langs": "🌐 Тиллар",
+        "hourly": "🕒 Бугунги фаоллик", "tech": "⚙️ Админ (техник)", "empty": "Ҳали сўров йўқ.",
+        "src": {"instagram_reels": "🎬 Reels", "instagram_post": "📸 Пост", "instagram_account": "👤 Аккаунт",
+                "youtube_shorts": "🎥 Shorts", "voice": "🎤 Овоз", "video_file": "🎞 Видео файл"},
+        "lng": {"lang_kirill": "🇺🇿 Кирилл", "lang_lotin": "🔤 Лотин", "lang_rus": "🇷🇺 Рус"},
+        "err": {"instagram_limit": "Instagram чеклов", "cookie_expired": "Instagram cookie", "bad_link": "Ҳавола очилмади",
+                "openai_credit": "OpenAI кредит", "moderation": "Модерация", "boshqa": "Бошқа"},
+        "fallback": "Захира режим (gpt-4o-mini)", "cookie": "Cookie билан юклаш",
+    },
+    "lang_lotin": {
+        "title_user": "📊 Sizning statistikangiz", "title_admin": "📊 Umumiy statistika (admin)",
+        "today": "Bugun", "week": "Hafta", "month": "Oy", "total": "Jami",
+        "rate": "Bugungi muvaffaqiyat", "types": "📌 Tahlil turlari", "langs": "🌐 Tillar",
+        "hourly": "🕒 Bugungi faollik", "tech": "⚙️ Admin (texnik)", "empty": "Hali so'rov yo'q.",
+        "src": {"instagram_reels": "🎬 Reels", "instagram_post": "📸 Post", "instagram_account": "👤 Akkaunt",
+                "youtube_shorts": "🎥 Shorts", "voice": "🎤 Ovoz", "video_file": "🎞 Video fayl"},
+        "lng": {"lang_kirill": "🇺🇿 Kirill", "lang_lotin": "🔤 Lotin", "lang_rus": "🇷🇺 Rus"},
+        "err": {"instagram_limit": "Instagram cheklov", "cookie_expired": "Instagram cookie", "bad_link": "Havola ochilmadi",
+                "openai_credit": "OpenAI kredit", "moderation": "Moderatsiya", "boshqa": "Boshqa"},
+        "fallback": "Fallback (gpt-4o-mini)", "cookie": "Cookie bilan yuklash",
+    },
+    "lang_rus": {
+        "title_user": "📊 Ваша статистика", "title_admin": "📊 Общая статистика (админ)",
+        "today": "Сегодня", "week": "Неделя", "month": "Месяц", "total": "Всего",
+        "rate": "Успешность сегодня", "types": "📌 Типы анализа", "langs": "🌐 Языки",
+        "hourly": "🕒 Активность сегодня", "tech": "⚙️ Админ (техническое)", "empty": "Запросов пока нет.",
+        "src": {"instagram_reels": "🎬 Reels", "instagram_post": "📸 Пост", "instagram_account": "👤 Аккаунт",
+                "youtube_shorts": "🎥 Shorts", "voice": "🎤 Голос", "video_file": "🎞 Видеофайл"},
+        "lng": {"lang_kirill": "🇺🇿 Кириллица", "lang_lotin": "🔤 Латиница", "lang_rus": "🇷🇺 Русский"},
+        "err": {"instagram_limit": "Ограничение Instagram", "cookie_expired": "Cookie Instagram", "bad_link": "Ссылка не открылась",
+                "openai_credit": "Кредит OpenAI", "moderation": "Модерация", "boshqa": "Другое"},
+        "fallback": "Резервный режим (gpt-4o-mini)", "cookie": "Загрузка с cookie",
+    },
+}
+
+
+def _progress_bar(percent: int, width: int = 10) -> str:
+    filled = max(0, min(width, round(width * percent / 100)))
+    return "▓" * filled + "░" * (width - filled)
+
+
+def build_stats_text(s: dict, lang: str, is_admin: bool) -> str:
+    """/stats matnini (Telegram HTML) tuzadi. Oddiy foydalanuvchiga faqat o'z ko'rsatkichlari,
+    texnik bo'lim faqat adminga."""
+    t = _STATS_TEXTS.get(lang, _STATS_TEXTS["lang_kirill"])
+    lines = [f"<b>{t['title_admin'] if is_admin else t['title_user']}</b>", ""]
+
+    if not s["all_total"]:
+        lines.append(t["empty"])
+        return "\n".join(lines)
+
+    today = f"{s['today_total']}"
+    if s["today_total"]:
+        today += f"  ✅{s['today_success']}"
+        if s["today_error"]:
+            today += f" ❌{s['today_error']}"
+    rows = [
+        (t["today"], today), (t["week"], str(s["week_total"])),
+        (t["month"], str(s["month_total"])), (t["total"], str(s["all_total"])),
+    ]
+    lines.append("<pre>" + "\n".join(f"{name:<9}{val}" for name, val in rows) + "</pre>")
+
+    if s["today_total"]:
+        pct = round(100 * s["today_success"] / s["today_total"])
+        lines.append(f"{t['rate']}: {_progress_bar(pct)} {pct}%")
+
+    src = " · ".join(f"{t['src'][k]} {v}" for k, v in s["by_source"].items() if v and k in t["src"])
+    if src:
+        lines += ["", t["types"], src]
+    lng = " · ".join(f"{t['lng'][k]} {v}" for k, v in s["by_lang"].items() if v and k in t["lng"])
+    if lng:
+        lines += ["", t["langs"], lng]
+
+    if s["hourly"]:
+        peak = max(s["hourly"].values())
+        bars = "\n".join(
+            f"{h}:00 {'█' * max(1, round(10 * c / peak))} {c}" for h, c in sorted(s["hourly"].items())
+        )
+        lines += ["", t["hourly"], f"<pre>{bars}</pre>"]
+
+    if is_admin:
+        et = s["today_error_types"]
+        tech = [f"{t['err'][k]}: {v}" for k, v in et.items() if v and k in t["err"]]
+        tech.append(f"{t['fallback']}: {s['fallback_used_count']}")
+        tech.append(f"{t['cookie']}: {s['cookie_fallback_count']}")
+        lines += ["", t["tech"], "\n".join(tech)]
+
+    return "\n".join(lines)
+
+
 @router.message(Command("stats"))
 async def cmd_stats(message: Message):
     lang = user_language.get(message.from_user.id, "lang_kirill")
     # Admin — umumiy statistika; boshqa foydalanuvchi faqat o'zinikini ko'radi.
     is_admin = message.from_user.id == ADMIN_USER_ID
     s = stats.get_stats(None if is_admin else message.from_user.id)
-    et = s["today_error_types"]
-    src = s["by_source"]
-    lng = s["by_lang"]
-
-    hourly_text = ""
-    if s["hourly"]:
-        if lang == "lang_rus":
-            hourly_rows = "\n".join(f"{h}:00 — {c}" for h, c in sorted(s["hourly"].items()))
-            hourly_text = f"\n\n📈 Активность сегодня:\n{hourly_rows}\nВсего: {s['today_total']}"
-        elif lang == "lang_lotin":
-            hourly_rows = "\n".join(f"{h}:00 — {c} ta" for h, c in sorted(s["hourly"].items()))
-            hourly_text = f"\n\n📈 Bugungi faollik:\n{hourly_rows}\nJami: {s['today_total']} ta"
-        else:
-            hourly_rows = "\n".join(f"{h}:00 — {c} та" for h, c in sorted(s["hourly"].items()))
-            hourly_text = f"\n\n📈 Бугунги фаоллик:\n{hourly_rows}\nЖами: {s['today_total']} та"
-
-    if lang == "lang_rus":
-        text = (
-            f"📊 Статистика:\n"
-            f"📅 Сегодня: {s['today_total']} запросов\n"
-            f"  ✅ Успешно: {s['today_success']}\n"
-            f"  ❌ Ошибки: {s['today_error']}\n"
-            f"    - Ограничение Instagram: {et['instagram_limit']}\n"
-            f"    - Cookie Instagram: {et['cookie_expired']}\n"
-            f"    - Ссылка не открылась: {et['bad_link']}\n"
-            f"    - Кредит OpenAI: {et['openai_credit']}\n"
-            f"    - Модерация: {et['moderation']}\n"
-            f"    - Другое: {et['boshqa']}\n\n"
-            f"📅 На этой неделе: {s['week_total']}\n"
-            f"📅 В этом месяце: {s['month_total']}\n"
-            f"📅 Всего (с начала работы бота): {s['all_total']}\n\n"
-            f"📌 По типу (всего):\n"
-            f"  🎬 Instagram Reels: {src['instagram_reels']}\n"
-            f"  📸 Instagram пост: {src['instagram_post']}\n"
-            f"  👤 Instagram аккаунт: {src['instagram_account']}\n"
-            f"  🎥 YouTube Shorts: {src['youtube_shorts']}\n"
-            f"  🎤 Голосовое сообщение: {src['voice']}\n"
-            f"  🎞 Видеофайл: {src['video_file']}\n\n"
-            f"📌 По языку (всего):\n"
-            f"  🇺🇿 Узбекский кириллица: {lng['lang_kirill']}\n"
-            f"  🔤 Узбекский латиница: {lng['lang_lotin']}\n"
-            f"  🇷🇺 Русский: {lng['lang_rus']}\n\n"
-            f"🔄 Резервный режим (gpt-4o-mini): {s['fallback_used_count']}\n"
-            f"🔄 Загрузка с cookie: {s['cookie_fallback_count']}"
-            f"{hourly_text}"
-        )
-    elif lang == "lang_lotin":
-        text = (
-            f"📊 Statistika:\n"
-            f"📅 Bugun: {s['today_total']} ta so'rov\n"
-            f"  ✅ Muvaffaqiyatli: {s['today_success']}\n"
-            f"  ❌ Xato: {s['today_error']}\n"
-            f"    - Instagram cheklov: {et['instagram_limit']}\n"
-            f"    - Instagram cookie: {et['cookie_expired']}\n"
-            f"    - Havola ochilmadi: {et['bad_link']}\n"
-            f"    - OpenAI kredit: {et['openai_credit']}\n"
-            f"    - Moderatsiya: {et['moderation']}\n"
-            f"    - Boshqa: {et['boshqa']}\n\n"
-            f"📅 Bu hafta: {s['week_total']} ta\n"
-            f"📅 Bu oy: {s['month_total']} ta\n"
-            f"📅 Jami (botdan beri): {s['all_total']} ta\n\n"
-            f"📌 Tur bo'yicha (jami):\n"
-            f"  🎬 Instagram Reels: {src['instagram_reels']}\n"
-            f"  📸 Instagram post: {src['instagram_post']}\n"
-            f"  👤 Instagram akkaunt: {src['instagram_account']}\n"
-            f"  🎥 YouTube Shorts: {src['youtube_shorts']}\n"
-            f"  🎤 Ovozli xabar: {src['voice']}\n"
-            f"  🎞 Video fayl: {src['video_file']}\n\n"
-            f"📌 Til bo'yicha (jami):\n"
-            f"  🇺🇿 O'zbek kirill: {lng['lang_kirill']}\n"
-            f"  🔤 O'zbek lotin: {lng['lang_lotin']}\n"
-            f"  🇷🇺 Rus: {lng['lang_rus']}\n\n"
-            f"🔄 Fallback (gpt-4o-mini): {s['fallback_used_count']} ta\n"
-            f"🔄 Cookie bilan yuklash: {s['cookie_fallback_count']} ta"
-            f"{hourly_text}"
-        )
-    else:
-        text = (
-            f"📊 Статистика:\n"
-            f"📅 Бугун: {s['today_total']} та сўров\n"
-            f"  ✅ Муваффақиятли: {s['today_success']}\n"
-            f"  ❌ Хато: {s['today_error']}\n"
-            f"    - Instagram чеклов: {et['instagram_limit']}\n"
-            f"    - Instagram cookie: {et['cookie_expired']}\n"
-            f"    - Ҳавола очилмади: {et['bad_link']}\n"
-            f"    - OpenAI кредит: {et['openai_credit']}\n"
-            f"    - Модерация: {et['moderation']}\n"
-            f"    - Бошқа: {et['boshqa']}\n\n"
-            f"📅 Бу ҳафта: {s['week_total']} та\n"
-            f"📅 Бу ой: {s['month_total']} та\n"
-            f"📅 Жами (ботдан бери): {s['all_total']} та\n\n"
-            f"📌 Тур бўйича (жами):\n"
-            f"  🎬 Instagram Reels: {src['instagram_reels']}\n"
-            f"  📸 Instagram пост: {src['instagram_post']}\n"
-            f"  👤 Instagram аккаунт: {src['instagram_account']}\n"
-            f"  🎥 YouTube Shorts: {src['youtube_shorts']}\n"
-            f"  🎤 Овозли хабар: {src['voice']}\n"
-            f"  🎞 Видео файл: {src['video_file']}\n\n"
-            f"📌 Тил бўйича (жами):\n"
-            f"  🇺🇿 Ўзбек кирилл: {lng['lang_kirill']}\n"
-            f"  🔤 Ўзбек лотин: {lng['lang_lotin']}\n"
-            f"  🇷🇺 Рус: {lng['lang_rus']}\n\n"
-            f"🔄 Захира режим (gpt-4o-mini): {s['fallback_used_count']} та\n"
-            f"🔄 Cookie билан юклаш: {s['cookie_fallback_count']} та"
-            f"{hourly_text}"
-        )
-    if not is_admin:
-        # Ichki texnik ko'rsatkichlar (xato turlari, fallback, cookie) faqat admin uchun.
-        text = "\n".join(
-            line for line in text.split("\n")
-            if not (line.startswith("    - ") or line.startswith("🔄"))
-        )
-        text = text.replace("\n\n\n", "\n\n").rstrip()
-    await message.answer(text)
+    await message.answer(build_stats_text(s, lang, is_admin), parse_mode="HTML")
 
 @router.callback_query(F.data.in_({"lang_kirill", "lang_lotin", "lang_rus"}))
 async def set_language(callback: CallbackQuery):
@@ -1116,7 +1106,7 @@ async def handle_voice(message: Message):
                 fallback_used = True
                 logging.info(f"gpt-4o-mini fallback muvaffaqiyatli (handle_voice): user_id={message.from_user.id}")
 
-        result_text = f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n{html.escape(analysis)}"
+        result_text = f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n{_rich(analysis)}"
 
         # Telegram берган давомийлик: 5 сониядан қисқа овозда аниқлик паст бўлиши мумкин
         if voice.duration is not None and voice.duration < SHORT_VOICE_SECONDS:
@@ -1293,7 +1283,7 @@ async def handle_video_file(message: Message):
             await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
             return
 
-        result_text = f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n{html.escape(analysis)}"
+        result_text = f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n{_rich(analysis)}"
         if len(result_text) > 4000:
             _head, _tail = _head_tail(result_text)
             await status_msg.edit_text(_head, parse_mode="HTML")
@@ -1466,7 +1456,7 @@ async def process_reel(message: Message, url: str):
 
         result_text = (
             f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n"
-            f"{html.escape(analysis)}"
+            f"{_rich(analysis)}"
         )
         cache_put(url, lang, result_text)
 
@@ -1608,7 +1598,7 @@ async def handle_youtube(message: Message):
             analysis = await loop.run_in_executor(None, analyze_content, subtitle_text, lang)
             result_text = (
                 f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n"
-                f"{html.escape(analysis)}"
+                f"{_rich(analysis)}"
             )
             if len(result_text) > 4000:
                 _head, _tail = _head_tail(result_text)
@@ -1709,7 +1699,7 @@ async def handle_youtube(message: Message):
 
         result_text = (
             f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n"
-            f"{html.escape(analysis)}"
+            f"{_rich(analysis)}"
         )
 
         if len(result_text) > 4000:
