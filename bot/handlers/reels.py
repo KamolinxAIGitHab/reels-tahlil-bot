@@ -18,7 +18,7 @@ from bot.utils.downloader import (
     download_reels_audio, download_instagram_image, download_account_posts,
     download_youtube_shorts, get_youtube_subtitles, VideoTooLongError, AudioExtractionFailedError,
     CookieExpiredError, PrivateContentError, VideoPostError, is_rate_limited,
-    ReelTooLongError, MAX_REEL_SECONDS,
+    ReelTooLongError, MAX_REEL_SECONDS, pop_reel_author,
 )
 from bot.utils import stats
 from bot.utils import cost as cost_utils
@@ -196,6 +196,68 @@ def _split_message(text: str, limit: int = 4000) -> list:
             part += _QUOTE_CLOSE
         parts[i] = part
     return parts
+
+
+_SOURCE_TEXTS = {
+    "lang_kirill": ("Муаллиф", "Муаллиф ёзган ҳаволалар (текширилмаган, босиб нусха олинг)"),
+    "lang_lotin": ("Muallif", "Muallif yozgan havolalar (tekshirilmagan, bosib nusxa oling)"),
+    "lang_rus": ("Автор", "Ссылки от автора (не проверены, нажмите, чтобы скопировать)"),
+}
+_URL_IN_TEXT_RE = re.compile(r"https?://[^\s<>\"'()]+", re.IGNORECASE)
+MAX_CAPTION_LINKS = 5
+
+
+def author_get(url: str):
+    """Keshdan muallif: (nom, havola) yoki None."""
+    key = _cache_key(url, "")
+    if not key:
+        return None
+    row = stats.rc_get("author", key[0], "", "1", CACHE_TTL_DAYS)
+    if not row or "\n" not in row[0]:
+        return None
+    display, link = row[0].split("\n", 1)
+    return display, link
+
+
+def author_put(url: str, author) -> None:
+    key = _cache_key(url, "")
+    if key and author:
+        stats.rc_put("author", key[0], "", "1", f"{author[0]}\n{author[1]}", "", CACHE_DB_MAX_ROWS)
+
+
+def _caption_links(caption: str, own_url: str = "") -> list:
+    """Izohdagi (caption) tashqi havolalar: takrorlarsiz, eng ko'pi MAX_CAPTION_LINKS ta.
+    Reels'ning o'z havolasi tashlab ketiladi."""
+    own = _cache_key(own_url, "")
+    found = []
+    for raw in _URL_IN_TEXT_RE.findall(caption or ""):
+        link = raw.rstrip(".,;:!?»”…")
+        if not link or len(link) > 200 or link in found:
+            continue
+        m = _SHORTCODE_PATTERN.search(link)
+        if m and own and m.group(1) == own[0]:
+            continue
+        found.append(link)
+        if len(found) >= MAX_CAPTION_LINKS:
+            break
+    return found
+
+
+def _author_line(lang: str, author) -> str:
+    """Natija tepasidagi muallif qatori (Telegram HTML)."""
+    if not author:
+        return ""
+    label = _SOURCE_TEXTS.get(lang, _SOURCE_TEXTS["lang_kirill"])[0]
+    return f'👤 {label}: <a href="{html.escape(author[1], quote=True)}">{html.escape(author[0])}</a>\n\n'
+
+
+def _links_block(lang: str, caption: str, own_url: str = "") -> str:
+    """Natija pastidagi izoh havolalari bloki. Havolalar <code> ichida: bosilmaydi (faqat nusxa olinadi)."""
+    links = _caption_links(caption, own_url)
+    if not links:
+        return ""
+    title = _SOURCE_TEXTS.get(lang, _SOURCE_TEXTS["lang_kirill"])[1]
+    return f"\n\n🔗 <b>{html.escape(title)}</b>\n" + "\n".join(f"<code>{html.escape(u)}</code>" for u in links)
 
 
 def _head_tail(text: str, limit: int = 4000):
@@ -1400,9 +1462,12 @@ async def process_reel(message: Message, url: str):
         if cached_tr:
             text, reel_caption = cached_tr
             used_cookie_fallback = False
+            author = author_get(url)
             logging.info(f"TRANSKRIPSIYA KESHI: user_id={message.from_user.id} url={url}")
         else:
             file_path, reel_caption, used_cookie_fallback = await download_reels_audio(url)
+            author = pop_reel_author(url)
+            author_put(url, author)
             tmp_dir = os.path.dirname(file_path)
 
             if lang == "lang_rus":
@@ -1489,7 +1554,9 @@ async def process_reel(message: Message, url: str):
 
         result_text = (
             f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n"
+            f"{_author_line(lang, author)}"
             f"{_rich(analysis)}"
+            f"{_links_block(lang, reel_caption, url)}"
         )
         cache_put(url, lang, result_text)
 
@@ -1647,6 +1714,7 @@ async def handle_youtube(message: Message):
         # yo'qligi sababli yuklab bo'lmadi) — foydalanuvchiga xabar bermay,
         # avvalgi yt-dlp+Whisper pipeline'iga xabarsiz o'tiladi.
         file_path, video_caption = await download_youtube_shorts(url)
+        yt_author = pop_reel_author(url)
         tmp_dir = os.path.dirname(file_path)
 
         if lang == "lang_rus":
@@ -1732,7 +1800,9 @@ async def handle_youtube(message: Message):
 
         result_text = (
             f"🔍 <b>{RESULT_HEADERS.get(lang, RESULT_HEADERS['lang_kirill'])}:</b>\n\n"
+            f"{_author_line(lang, yt_author)}"
             f"{_rich(analysis)}"
+            f"{_links_block(lang, video_caption)}"
         )
 
         if len(result_text) > 4000:

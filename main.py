@@ -2,6 +2,7 @@ import asyncio
 import logging
 import sys
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
 from aiogram.types import BotCommand, BotCommandScopeChat
 from bot.config import settings
 from bot.handlers import reels
@@ -34,7 +35,8 @@ async def cost_alert_loop(bot: Bot):
 
 
 async def main():
-    bot = Bot(token=settings.bot_token)
+    # Havolalar ostida avtomatik ko'rinish (preview) chiqmasligi uchun o'chirilgan.
+    bot = Bot(token=settings.bot_token, default=DefaultBotProperties(link_preview_is_disabled=True))
     dp = Dispatcher()
 
     dp.include_router(reels.router)

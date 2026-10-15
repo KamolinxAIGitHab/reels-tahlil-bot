@@ -8,6 +8,7 @@ import base64
 import subprocess
 import http.cookiejar
 import logging
+import re
 import instaloader
 from googleapiclient.discovery import build
 from bot.config import settings, YOUTUBE_API_KEY
@@ -263,6 +264,42 @@ def _new_instaloader(**extra_opts) -> "instaloader.Instaloader":
     _load_cookies_into(L)
     return L
 
+# Muallif ma'lumoti: yuklash paytida yt-dlp javobidan olinadi va chaqiruvchi pop_reel_author()
+# bilan oladi (download_*() qaytarish formati o'zgarmasligi uchun). Faqat tekshirilgan
+# qiymatlar saqlanadi: Instagram nomi qat'iy andoza bilan, YouTube kanali faqat youtube.com manzili.
+_AUTHORS: dict[str, tuple[str, str]] = {}
+_IG_HANDLE_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
+_YT_CHANNEL_RE = re.compile(r"^https://(?:www\.)?youtube\.com/[A-Za-z0-9_@./%\-]{1,120}$")
+
+
+def _remember_author(url: str, display: str, link: str) -> None:
+    if len(_AUTHORS) >= 200:
+        _AUTHORS.pop(next(iter(_AUTHORS)), None)
+    _AUTHORS[url] = (display, link)
+
+
+def _author_from_instagram(url: str, info) -> None:
+    uid = info.get("uploader_id") if isinstance(info, dict) else None
+    # Faqat raqamlardan iborat qiymat — foydalanuvchi nomi emas, ichki ID bo'lishi mumkin: havola noto'g'ri chiqadi.
+    if isinstance(uid, str) and _IG_HANDLE_RE.match(uid) and not uid.isdigit():
+        _remember_author(url, "@" + uid, f"https://www.instagram.com/{uid}/")
+
+
+def _author_from_youtube(url: str, info) -> None:
+    if not isinstance(info, dict):
+        return
+    link = info.get("channel_url") or info.get("uploader_url")
+    name = info.get("channel") or info.get("uploader") or ""
+    if isinstance(link, str) and _YT_CHANNEL_RE.match(link):
+        display = str(name).strip()[:60] or link.rsplit("/", 1)[-1]
+        _remember_author(url, display, link)
+
+
+def pop_reel_author(url: str):
+    """Oxirgi yuklashda aniqlangan muallif: (ko'rinadigan nom, havola) yoki None."""
+    return _AUTHORS.pop(url, None)
+
+
 async def download_reels_audio(url: str):
     """Instagram Reels videosini yt-dlp orqali yuklaydi, undan ffmpeg bilan
     audio yo'lakchasini ajratib oladi (Whisper API'ning 25MB chegarasidan
@@ -299,6 +336,7 @@ async def download_reels_audio(url: str):
             info = ydl.extract_info(url, download=True)
         if too_long:
             raise ReelTooLongError(too_long[0])
+        _author_from_instagram(url, info)
         if isinstance(info, dict):
             return (info.get("description") or "").strip()
         return ""
@@ -475,6 +513,7 @@ async def download_youtube_shorts(url: str, max_duration: int = 60):
             raise VideoTooLongError(int(duration))
 
         caption = info.get("description") or info.get("title") or ""
+        _author_from_youtube(url, info)
 
         for player_client in _YOUTUBE_PLAYER_CLIENTS:
             try:
