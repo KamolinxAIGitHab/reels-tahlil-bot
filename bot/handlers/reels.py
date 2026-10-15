@@ -144,14 +144,38 @@ def register_http400(url: str) -> bool:
 _LABEL_RE = re.compile(r"^((?:✅|⚠️|⚠|❌|💡|🎯|🚀|📝|🔍)\ufe0f?[ \t]*[^:\n<>]{2,60}:)", re.MULTILINE)
 
 
+_TRANSCRIPT_RE = re.compile(r"^📝[^\n]*:[ \t]*$", re.MULTILINE)
+_ANALYSIS_MARK_RE = re.compile(r"^🔍[ \t]*(?:Таҳлил|Tahlil|Анализ):[ \t]*\n?", re.MULTILINE)
+_QUOTE_OPEN = "<blockquote expandable>"
+_QUOTE_CLOSE = "</blockquote>"
+
+
 def _rich(analysis: str) -> str:
-    """Tahlil matnini Telegram HTML uchun tayyorlaydi: matn escape qilinadi,
-    bo'lim sarlavhalari (✅/⚠️/❌/💡/🎯/🚀/📝 ... :) qalin qilinadi."""
-    return _LABEL_RE.sub(r"<b>\1</b>", html.escape(analysis))
+    """Tahlil matnini Telegram HTML uchun tayyorlaydi: matn escape qilinadi, bo'lim
+    sarlavhalari (✅/⚠️/❌/💡/🎯/🚀 ... :) qalin qilinadi. Model javobida transkripsiya
+    tahlildan oldin keladi; bu yerda tahlil tepaga chiqariladi, transkripsiya esa pastda
+    yig'iladigan blokka (expandable blockquote) solinadi. Bo'limlar topilmasa — oddiy ko'rinish."""
+    t = _TRANSCRIPT_RE.search(analysis)
+    m = _ANALYSIS_MARK_RE.search(analysis, t.end()) if t else None
+    if not (t and m):
+        return _LABEL_RE.sub(r"<b>\1</b>", html.escape(analysis))
+
+    head = analysis[:t.start()]
+    transcript_title = analysis[t.start():t.end()].strip()
+    transcript_body = analysis[t.end():m.start()].strip()
+    body = analysis[m.end():]
+    if not transcript_body or not body.strip():
+        return _LABEL_RE.sub(r"<b>\1</b>", html.escape(analysis))
+
+    out = _LABEL_RE.sub(r"<b>\1</b>", html.escape(head + body.lstrip("\n"))).rstrip()
+    out += f"\n\n<b>{html.escape(transcript_title)}</b>\n{_QUOTE_OPEN}{html.escape(transcript_body)}{_QUOTE_CLOSE}"
+    return out
 
 
 def _split_message(text: str, limit: int = 4000) -> list:
-    """Uzun matnni qator chegarasidan bo'lib, so'z/qator o'rtasida uzilmasligini ta'minlaydi."""
+    """Uzun matnni qator chegarasidan bo'lib, so'z/qator o'rtasida uzilmasligini ta'minlaydi.
+    Yig'iladigan blok (blockquote) bo'laklar orasida bo'linsa, har bir bo'lakda tegi yopiladi
+    va keyingisida qayta ochiladi (aks holda Telegram HTML'ni o'qiy olmaydi)."""
     parts = []
     while len(text) > limit:
         cut = text.rfind("\n", 0, limit)
@@ -162,6 +186,15 @@ def _split_message(text: str, limit: int = 4000) -> list:
         parts.append(text[:cut].rstrip())
         text = text[cut:].lstrip("\n ")
     parts.append(text)
+
+    reopen = False
+    for i, part in enumerate(parts):
+        if reopen:
+            part = _QUOTE_OPEN + part
+        reopen = part.count(_QUOTE_OPEN) > part.count(_QUOTE_CLOSE)
+        if reopen:
+            part += _QUOTE_CLOSE
+        parts[i] = part
     return parts
 
 
