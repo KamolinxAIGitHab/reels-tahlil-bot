@@ -22,6 +22,8 @@ async def cost_alert_loop(bot: Bot):
     Юбориб бўлмаса, кейинги айланишда қайта уринади."""
     while True:
         await asyncio.sleep(30)
+        if not reels.ADMIN_USER_ID:
+            continue
         try:
             for key, text in await asyncio.to_thread(stats.pending_alerts):
                 try:
@@ -49,6 +51,8 @@ async def main():
 
     # /xarajat фақат маъмурнинг менюсида кўринади (бошқа фойдаланувчиларда йўқ)
     try:
+        if not reels.ADMIN_USER_ID:
+            raise RuntimeError("ADMIN_USER_ID ўрнатилмаган")
         await bot.set_my_commands(
             [
                 BotCommand(command="start", description="Ботни бошлаш / Начать"),

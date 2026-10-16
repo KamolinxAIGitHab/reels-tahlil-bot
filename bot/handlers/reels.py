@@ -28,12 +28,14 @@ from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_c
 
 router = Router()
 
-# Админ Telegram ID: Railway Variables'даги ADMIN_USER_ID дан олинади. Захира қиймат — ўзгарувчи ўрнатилгунча
-# админ имкониятлари (огоҳлантириш, /xarajat) ишлашда давом этиши учун.
+# Админ Telegram ID: фақат Railway Variables'даги ADMIN_USER_ID дан олинади.
+# Ўрнатилмаган ёки нотўғри бўлса — 0 (админ имкониятлари ўчирилади).
 try:
-    ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "") or 47575298)
+    ADMIN_USER_ID = int((os.getenv("ADMIN_USER_ID", "") or "").strip() or 0)
 except ValueError:
-    ADMIN_USER_ID = 47575298
+    ADMIN_USER_ID = 0
+if not ADMIN_USER_ID:
+    logging.warning("ADMIN_USER_ID ўрнатилмаган: админ имкониятлари ўчирилган")
 
 # Фойдаланувчи чекловлари (харажатни назорат қилиш). Қийматлар Railway Variables орқали ўзгартирилади.
 def _env_int(name: str, default: int) -> int:
