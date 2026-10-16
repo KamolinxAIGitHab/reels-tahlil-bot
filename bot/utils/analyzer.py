@@ -8,7 +8,7 @@ from bot.utils import cost
 
 # Таҳлил кўрсатмалари (system prompt) ўзгартирилса, бу қийматни ошириш керак:
 # шунда доимий кэшдаги эски натижалар ишлатилмайди.
-PROMPT_VERSION = "1"
+PROMPT_VERSION = "2"
 
 client = OpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
 async_client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
@@ -233,6 +233,7 @@ _QUALITY_RULES = {
         "23. «Аудио сифати паст» каби огоҳлантиришни ўзинг ёзма: у автоматик қўшилади. Исм, жой номи ва рақамлар аниқ бўлмаса, уларни «✅ ТЕХНИК ТЎҒРИ» да факт сифатида тасдиқлама.\n"
         "24. Маркетинг тактикаси қаторидаги «» ичидаги иқтибосни изоҳ ёки аудиодаги сўзларга аниқ мос ёз: сўзни ўзинг алмаштирма ва бошқа маънога ўзгартирма (масалан, «darslik» ни «дўстлик» деб ёзма); фақат ёзувни танланган ёзувга ўгир.\n"
         "25. Матн фақат оддий саломлашув, миннатдорчилик ёки мазмунсиз қисқа жумладан («Привет», «Салом», «Assalomu alaykum», «Спасибо» каби) иборат бўлса, «💡 АМАЛИЙ ҚИЙМАТ» да ҳамиша «Йўқ ✗» ёз ва «🚀 СИНАБ КЎРИШ» бўлимини умуман ёзма. Саломлашув тили (рус, инглиз ва бошқа) бу қоидани ўзгартирмайди; «Бор ✓» ёки «Есть ✓» ёзма."
+        "26. Видеода ёки изоҳда тариф, обуна, нарх, тўлов миқдори, чегирма, лимит ёки «бепул» шарти айтилса («ойига 20 доллар», «Pro тариф», «ҳозирча бепул»), ҳар бирини «⚠️ ОРТИРИЛГАН» блокида ҳар доим алоҳида қаторда «текшириш керак: тариф ва нарх тез ўзгаради, расмий сайтда тасдиқланг» деб белгила. Аниқ ибора ёки рақамни келтир. Даъво тўғридек туюлса ҳам, уни «✅ ТЕХНИК ТЎҒРИ» га қўйма. Тариф ва нарх айтилмаган бўлса, бу қаторни ўйлаб топма.\n"
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -284,6 +285,7 @@ _QUALITY_RULES = {
         "22. «Audio sifati past» kabi ogohlantirishni o'zing yozma: u avtomatik qo'shiladi. Ism, joy nomi va raqamlar aniq bo'lmasa, ularni «✅ TEXNIK TO'G'RI» da fakt sifatida tasdiqlama.\n"
         "23. Marketing taktikasi qatoridagi «» ichidagi iqtibosni izoh yoki audiodagi so'zlarga aniq mos yoz: so'zni o'zing almashtirma va boshqa ma'noga o'zgartirma (masalan, «darslik» ni «do'stlik» deb yozma); faqat yozuvni tanlangan yozuvga o'gir.\n"
         "24. Matn faqat oddiy salomlashuv, minnatdorchilik yoki mazmunsiz qisqa jumladan («Привет», «Salom», «Assalomu alaykum», «Спасибо» kabi) iborat bo'lsa, «💡 AMALIY QIYMAT» da hamisha «Yo'q ✗» yoz va «🚀 SINAB KO'RISH» bo'limini umuman yozma. Salomlashuv tili (rus, ingliz va boshqa) bu qoidani o'zgartirmaydi; «Bor ✓» yoki «Есть ✓» yozma."
+        "25. Videoda yoki izohda tarif, obuna, narx, to'lov miqdori, chegirma, limit yoki «bepul» sharti aytilsa («oyiga 20 dollar», «Pro tarif», «hozircha bepul»), har birini «⚠️ ORTIRILGAN» blokida har doim alohida qatorda «tekshirish kerak: tarif va narx tez o'zgaradi, rasmiy saytda tasdiqlang» deb belgila. Aniq ibora yoki raqamni keltir. Da'vo to'g'ridek tuyulsa ham, uni «✅ TEXNIK TO'G'RI» ga qo'yma. Tarif va narx aytilmagan bo'lsa, bu qatorni o'ylab topma.\n"
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -332,6 +334,7 @@ _QUALITY_RULES = {
         "20. Предупреждение вроде «Качество аудио низкое» не пиши сам: оно добавляется автоматически. Имена, названия мест и числа, в которых нет уверенности, не подтверждай как факты в «✅ ТЕХНИЧЕСКИ ВЕРНО».\n"
         "21. Цитату в «» в строке про маркетинговую тактику бери из описания или аудио точно по словам: не заменяй слова и не меняй смысл (например, «darslik» не превращай в «дружба»); меняй только письменность на выбранную.\n"
         "22. Если текст состоит только из простого приветствия, благодарности или бессодержательной короткой фразы («Привет», «Салом», «Assalomu alaykum», «Спасибо» и т.п.), в «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» всегда пиши «Нет ✗» и раздел «🚀 КАК ПОПРОБОВАТЬ» не пиши вовсе. Язык приветствия (русский, английский или другой) это правило не меняет; «Есть ✓» не пиши."
+        "23. Если в видео или подписи названы тариф, подписка, цена, размер платежа, скидка, лимит или условие «бесплатно» («20 долларов в месяц», «тариф Pro», «пока бесплатно»), всегда отмечай каждое в блоке «⚠️ ПРЕУВЕЛИЧЕНО» отдельной строкой: «требует проверки: тарифы и цены быстро меняются, подтвердите на официальном сайте». Приводи конкретную фразу или число. Даже если утверждение кажется верным, не относи его к «✅ ТЕХНИЧЕСКИ ВЕРНО». Если тарифов и цен нет, не выдумывай эту строку.\n"
     ),
 }
 
