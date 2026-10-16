@@ -19,3 +19,8 @@ stats.db
 # Шахсий ёзувлар ва ёрдамчи папкалар
 hisobot.txt
 .claude/
+stats.db-journal
+Claude outputs/
+*.docx
+COOKIE_YANGILASH.md
+update_cookie.py
