@@ -28,6 +28,10 @@ class CookieExpiredError(Exception):
     bildiradi (qarang: COOKIE_YANGILASH.md)."""
 
 
+class NoAudioTrackError(FileNotFoundError):
+    """Видео юкланди, лекин унда овоз қатлами йўқ (ffmpeg аудио ажратолмади)."""
+
+
 class PrivateContentError(Exception):
     """Instagram kontenti xususiy (private) profildan bo'lgani va unga
     kirish cheklangani sababli cookie'siz ham, cookie bilan ham
@@ -401,7 +405,7 @@ async def download_reels_audio(url: str):
         os.remove(video_path)
 
         if not os.path.exists(audio_path):
-            raise FileNotFoundError("Audio ajratib olinmadi!")
+            raise NoAudioTrackError("Audio ajratib olinmadi!")
 
         return audio_path, caption, used_cookie
 

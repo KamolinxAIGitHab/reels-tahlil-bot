@@ -19,7 +19,7 @@ from bot.utils.downloader import (
     download_reels_audio, download_instagram_image, download_account_posts,
     download_youtube_shorts, get_youtube_subtitles, VideoTooLongError, AudioExtractionFailedError,
     CookieExpiredError, PrivateContentError, VideoPostError, is_rate_limited,
-    ReelTooLongError, MAX_REEL_SECONDS, pop_reel_author,
+    ReelTooLongError, MAX_REEL_SECONDS, pop_reel_author, NoAudioTrackError,
 )
 from bot.utils import stats
 from bot.utils import cost as cost_utils
@@ -1506,6 +1506,12 @@ async def handle_reel(message: Message):
     await process_reel(message, url)
 
 
+NO_AUDIO_TRACK_MESSAGES = {
+    "lang_kirill": "⚠️ Бу видеода овоз йўқ (аудио қатлам топилмади).\n\nОвозли бошқа Reels ҳаволасини юборинг.",
+    "lang_lotin": "⚠️ Bu videoda ovoz yo'q (audio qatlam topilmadi).\n\nOvozli boshqa Reels havolasini yuboring.",
+    "lang_rus": "⚠️ В этом видео нет звука (аудиодорожка не найдена).\n\nОтправьте ссылку на другой Reels со звуком.",
+}
+
 REEL_TOO_LONG_MESSAGES = {
     "lang_kirill": "⚠️ Видео жуда узун ({minutes} дақиқадан ортиқ). Қисқароқ Reels ҳаволасини юборинг.",
     "lang_lotin": "⚠️ Video juda uzun ({minutes} daqiqadan ortiq). Qisqaroq Reels havolasini yuboring.",
@@ -1678,6 +1684,10 @@ async def process_reel(message: Message, url: str):
     except CookieExpiredError as e:
         await notify_cookie_expired(message, lang, "instagram_reels", e)
         await status_msg.edit_text(COOKIE_EXPIRED_USER_MESSAGES.get(lang, COOKIE_EXPIRED_USER_MESSAGES["lang_kirill"]))
+    except NoAudioTrackError as e:
+        logging.warning(f"Videoda ovoz yo'q (user_id={message.from_user.id}, url={url}): {e}")
+        stats.log_analysis(message.from_user.id, "instagram_reels", lang, "error", "other", "videoda ovoz yo'q")
+        await status_msg.edit_text(NO_AUDIO_TRACK_MESSAGES.get(lang, NO_AUDIO_TRACK_MESSAGES["lang_kirill"]))
     except Exception as e:
         if await handle_openai_error(status_msg, lang, e, "handle_reel", message.from_user.id, "instagram_reels"):
             return
