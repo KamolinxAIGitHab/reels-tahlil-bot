@@ -132,6 +132,28 @@ def log_analysis(
         logging.error(f"Statistika bazasiga yozishda xato: {e}")
 
 
+def user_analyses_today(user_id: int) -> int:
+    """Bugun (O'zbekiston sutkasi, UTC+5) shu foydalanuvchining yangi (keshdan emas)
+    muvaffaqiyatli tahlillari soni. Xatoda 0 qaytaradi: hisoblash bot ishini to'xtatmasligi kerak."""
+    try:
+        from datetime import timedelta
+        now_uz = datetime.now(timezone.utc) + timedelta(hours=5)
+        start_utc = (now_uz.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(hours=5)).isoformat()
+        conn = _connect()
+        try:
+            cur = conn.execute(
+                "SELECT COUNT(*) FROM analysis_log WHERE user_id = ? AND timestamp >= ? "
+                "AND status = 'success' AND (error_type IS NULL OR error_type != 'cache_hit')",
+                (user_id, start_utc),
+            )
+            return int(cur.fetchone()[0])
+        finally:
+            conn.close()
+    except Exception as e:
+        logging.warning(f"Kunlik tahlil sonini hisoblab bo'lmadi: {e}")
+        return 0
+
+
 def get_stats(user_id: int | None = None) -> dict:
     """/stats buyrug'i uchun barcha kerakli agregatsiyalarni qaytaradi.
     user_id berilsa, hisob-kitob faqat shu foydalanuvchining yozuvlari bo'yicha

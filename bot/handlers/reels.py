@@ -3,6 +3,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 from aiogram.filters import Command
 from aiogram.exceptions import TelegramBadRequest
 import asyncio
+import functools
 from collections import deque
 import html
 import os
@@ -27,7 +28,76 @@ from bot.utils.analyzer import analyze_content, analyze_image_content, analyze_c
 
 router = Router()
 
-ADMIN_USER_ID = 47575298
+# Админ Telegram ID: Railway Variables'даги ADMIN_USER_ID дан олинади. Захира қиймат — ўзгарувчи ўрнатилгунча
+# админ имкониятлари (огоҳлантириш, /xarajat) ишлашда давом этиши учун.
+try:
+    ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "") or 47575298)
+except ValueError:
+    ADMIN_USER_ID = 47575298
+
+# Фойдаланувчи чекловлари (харажатни назорат қилиш). Қийматлар Railway Variables орқали ўзгартирилади.
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, "") or default)
+    except ValueError:
+        return default
+
+USER_DAILY_LIMIT = _env_int("USER_DAILY_LIMIT", 15)      # бир кунда битта фойдаланувчи учун янги таҳлиллар сони; 0 = чекловсиз
+MAX_PARALLEL_JOBS = max(1, _env_int("MAX_PARALLEL_JOBS", 3))  # бир вақтда ишловчи оғир ишлар сони
+_busy_users: set = set()
+_job_sem = asyncio.Semaphore(MAX_PARALLEL_JOBS)
+
+_LIMIT_TEXTS = {
+    "limit": {
+        "lang_kirill": "⚠️ Бугунги чегара тўлди (кунига {n} тагача янги таҳлил). Илтимос, эртага давом этинг.",
+        "lang_lotin": "⚠️ Bugungi chegara to'ldi (kuniga {n} tagacha yangi tahlil). Iltimos, ertaga davom eting.",
+        "lang_rus": "⚠️ Дневной лимит исчерпан (до {n} новых анализов в сутки). Пожалуйста, продолжите завтра.",
+    },
+    "busy": {
+        "lang_kirill": "⏳ Олдинги сўровингиз ҳали ишланяпти. Тугагач, янгисини юборинг.",
+        "lang_lotin": "⏳ Oldingi so'rovingiz hali ishlanyapti. Tugagach, yangisini yuboring.",
+        "lang_rus": "⏳ Предыдущий запрос ещё обрабатывается. Отправьте новый, когда он завершится.",
+    },
+    "queue": {
+        "lang_kirill": "⏳ Ботда ҳозир иш кўп. Сўровингиз навбатда, илтимос кутинг.",
+        "lang_lotin": "⏳ Botda hozir ish ko'p. So'rovingiz navbatda, iltimos kuting.",
+        "lang_rus": "⏳ Сейчас много запросов. Ваш запрос в очереди, пожалуйста, подождите.",
+    },
+}
+
+
+async def _daily_limit_hit(message: Message, lang: str) -> bool:
+    """Кунлик чегара тўлган бўлса, фойдаланувчига хабар юборади ва True қайтаради. Админга чегара йўқ."""
+    uid = message.from_user.id
+    if USER_DAILY_LIMIT <= 0 or uid == ADMIN_USER_ID:
+        return False
+    if stats.user_analyses_today(uid) < USER_DAILY_LIMIT:
+        return False
+    logging.info(f"KUNLIK CHEGARA: user_id={uid} limit={USER_DAILY_LIMIT}")
+    await message.answer(_LIMIT_TEXTS["limit"].get(lang, _LIMIT_TEXTS["limit"]["lang_kirill"]).format(n=USER_DAILY_LIMIT))
+    return True
+
+
+def _one_job_per_user(func):
+    """Оғир ишлов ҳандлерини ўраб олади: бир фойдаланувчидан бир вақтда биттадан ортиқ сўров ишламайди,
+    умумий параллел ишлар MAX_PARALLEL_JOBS билан чекланади (Railway хотира ва дискини ҳимоя қилади)."""
+    @functools.wraps(func)
+    async def wrapper(message: Message, *args, **kwargs):
+        uid = message.from_user.id
+        lang = user_language.get(uid, "lang_kirill")
+        if uid in _busy_users:
+            await message.answer(_LIMIT_TEXTS["busy"].get(lang, _LIMIT_TEXTS["busy"]["lang_kirill"]))
+            return
+        _busy_users.add(uid)
+        try:
+            if _job_sem.locked():
+                await message.answer(_LIMIT_TEXTS["queue"].get(lang, _LIMIT_TEXTS["queue"]["lang_kirill"]))
+            async with _job_sem:
+                return await func(message, *args, **kwargs)
+        finally:
+            _busy_users.discard(uid)
+    return wrapper
+
 
 class _PersistentLanguages(dict):
     """Foydalanuvchi tili: xotirada (tezkor) va stats.db'da (bot qayta ishga
@@ -991,6 +1061,7 @@ async def handle_account(message: Message):
         )
 
 @router.message(F.text.func(lambda text: extract_post_url(text) is not None))
+@_one_job_per_user
 async def handle_post(message: Message):
     text = message.text or ""
     url = extract_post_url(text)
@@ -999,6 +1070,8 @@ async def handle_post(message: Message):
         # Кешда фақат Reels оқимининг натижалари бор (видео постлар ҳам) —
         # Instagram'га сўровсиз шу ердан берилади
         await process_reel(message, url)
+        return
+    if await _daily_limit_hit(message, lang):
         return
     status_msg = await message.answer("⏳ Пост таҳлил қилиняпти...")
     images = None
@@ -1119,8 +1192,11 @@ async def handle_post(message: Message):
                 shutil.rmtree(tmp_dir, ignore_errors=True)
 
 @router.message(F.voice)
+@_one_job_per_user
 async def handle_voice(message: Message):
     lang = user_language.get(message.from_user.id, "lang_kirill")
+    if await _daily_limit_hit(message, lang):
+        return
 
     if lang == "lang_rus":
         status_msg = await message.answer("⏳ Голосовое сообщение обрабатывается...")
@@ -1330,6 +1406,7 @@ async def _analyze_text_with_fallback(text: str, lang: str, user_id: int, contex
 
 
 @router.message(F.func(lambda message: _video_source(message) is not None))
+@_one_job_per_user
 async def handle_video_file(message: Message):
     """Фойдаланувчи юборган видео файлни таҳлил қилади (Instagram'га боғлиқ эмас):
     файл юкланади → аудио ажратилади → STT → таҳлил. Овозли хабар ҳандлери (handle_voice)
@@ -1339,6 +1416,9 @@ async def handle_video_file(message: Message):
 
     def msg(key: str) -> str:
         return VIDEO_FILE_MESSAGES[key].get(lang, VIDEO_FILE_MESSAGES[key]["lang_kirill"])
+
+    if await _daily_limit_hit(message, lang):
+        return
 
     file_id, file_size, duration = _video_source(message)
 
@@ -1420,6 +1500,7 @@ async def handle_video_file(message: Message):
 
 
 @router.message(F.text.func(lambda text: extract_reel_url(text) is not None))
+@_one_job_per_user
 async def handle_reel(message: Message):
     url = extract_reel_url(message.text)
     await process_reel(message, url)
@@ -1444,6 +1525,9 @@ async def process_reel(message: Message, url: str):
         for part in _split_message(cached):
             await message.answer(part, parse_mode="HTML")
         stats.log_analysis(message.from_user.id, "instagram_reels", lang, "success", error_type="cache_hit")
+        return
+
+    if await _daily_limit_hit(message, lang):
         return
 
     if lang == "lang_rus":
