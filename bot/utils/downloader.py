@@ -514,7 +514,7 @@ def _sc_get(url: str, handle: str) -> dict:
 
 
 def _fetch_account_sc(username: str):
-    """(posts, biography) қайтаради; posts — analyze_account кутган форматда."""
+    """(posts, biography, profile) қайтаради; posts — analyze_account кутган форматда."""
     from datetime import datetime, timezone
 
     if not _scrapecreators_enabled():
@@ -533,9 +533,14 @@ def _fetch_account_sc(username: str):
         v = (user.get(key) or {}).get("count")
         return v if isinstance(v, int) else None
 
-    bio = (user.get("biography") or "").strip()
-    meta = f"[Обуначилар: {_count('edge_followed_by')}; кузатилаётган: {_count('edge_follow')}; постлар: {_count('edge_owner_to_timeline_media')}]"
-    biography = f"{meta} {bio}".strip()
+    biography = (user.get("biography") or "").strip()
+    profile = {
+        "followers": _count("edge_followed_by"),
+        "following": _count("edge_follow"),
+        "posts_total": _count("edge_owner_to_timeline_media"),
+        "verified": bool(user.get("is_verified")),
+        "business": bool(user.get("is_business_account")),
+    }
 
     data = _sc_get(SCRAPECREATORS_POSTS_URL, username)
     items = data.get("items") or []
@@ -559,7 +564,7 @@ def _fetch_account_sc(username: str):
             "date": date,
             "url": f"https://www.instagram.com/p/{code}/" if code else "",
         })
-    return posts, biography
+    return posts, biography, profile
 
 
 async def download_account_via_sc(username: str):

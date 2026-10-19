@@ -1105,13 +1105,13 @@ async def handle_account(message: Message):
     username = extract_account_url(message.text or "")
     status_msg = await message.answer("⏳ Аккаунт таҳлил қилиняпти...")
     try:
-        posts, biography = await download_account_via_sc(username)
+        posts, biography, profile = await download_account_via_sc(username)
         if not posts:
             stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "download_error", "posts bo'sh")
             await status_msg.edit_text("❌ Аккаунтда постлар топилмади.")
             return
         await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
-        result = await analyze_account(posts, biography, username, lang)
+        result = await analyze_account(posts, biography, username, lang, profile)
         if is_moderation_refusal(result):
             stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "moderation", "refusal-heuristic")
             await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
