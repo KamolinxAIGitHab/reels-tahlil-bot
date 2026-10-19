@@ -477,6 +477,96 @@ def _scrapecreators_fetch(url: str, tmp_dir: str) -> str:
     return caption
 
 
+# ---------------------------------------------------------------------------
+# Аккаунт таҳлили: ScrapeCreators Profile + Posts (instaloader 429 беради, шунинг учун ишлатилмайди).
+# Ҳар аккаунт ~2 кредит. Кунлик чегара (_sc_allow) ҳар чақирувни ҳисобга олади.
+# ---------------------------------------------------------------------------
+SCRAPECREATORS_PROFILE_URL = os.getenv(
+    "SCRAPECREATORS_PROFILE_URL", "https://api.scrapecreators.com/v1/instagram/profile"
+)
+SCRAPECREATORS_POSTS_URL = os.getenv(
+    "SCRAPECREATORS_POSTS_URL", "https://api.scrapecreators.com/v2/instagram/user/posts"
+)
+ACCOUNT_MAX_POSTS = 10
+
+
+class AccountFetchError(Exception):
+    """Аккаунт маълумотини олиб бўлмади (хусусий, топилмади, чегара тугади ва ҳ.к.)."""
+
+
+def _sc_get(url: str, handle: str) -> dict:
+    import httpx
+
+    if not _sc_allow():
+        raise AccountFetchError("ScrapeCreators кунлик чегараси тугади")
+    try:
+        r = httpx.get(url, params={"handle": handle}, headers={"x-api-key": SCRAPECREATORS_API_KEY}, timeout=60)
+        payload = r.json()
+    except Exception as e:
+        raise AccountFetchError(f"сўров бажарилмади ({type(e).__name__})") from None
+    if not isinstance(payload, dict):
+        raise AccountFetchError(f"кутилмаган жавоб (HTTP {r.status_code})")
+    if r.status_code != 200 or payload.get("success") is False:
+        msg = str(payload.get("message") or payload.get("error") or "")[:120]
+        raise AccountFetchError(f"HTTP {r.status_code} {msg}".strip())
+    logging.info(f"SCRAPECREATORS АККАУНТ: {url.rsplit('/', 1)[-1]} кредит={payload.get('credits_charged')}")
+    return payload
+
+
+def _fetch_account_sc(username: str):
+    """(posts, biography) қайтаради; posts — analyze_account кутган форматда."""
+    from datetime import datetime, timezone
+
+    if not _scrapecreators_enabled():
+        raise AccountFetchError("SCRAPECREATORS_API_KEY ўрнатилмаган")
+    if not _IG_HANDLE_RE.match(username or ""):
+        raise AccountFetchError("нотўғри ҳисоб номи")
+
+    prof = _sc_get(SCRAPECREATORS_PROFILE_URL, username)
+    user = (prof.get("data") or {}).get("user") or {}
+    if not user or not user.get("username"):
+        raise AccountFetchError("аккаунт топилмади")
+    if user.get("is_private"):
+        raise AccountFetchError("аккаунт ёпиқ (private)")
+
+    def _count(key):
+        v = (user.get(key) or {}).get("count")
+        return v if isinstance(v, int) else None
+
+    bio = (user.get("biography") or "").strip()
+    meta = f"[Обуначилар: {_count('edge_followed_by')}; кузатилаётган: {_count('edge_follow')}; постлар: {_count('edge_owner_to_timeline_media')}]"
+    biography = f"{meta} {bio}".strip()
+
+    data = _sc_get(SCRAPECREATORS_POSTS_URL, username)
+    items = data.get("items") or []
+    posts = []
+    for it in items[:ACCOUNT_MAX_POSTS]:
+        if not isinstance(it, dict):
+            continue
+        cap = it.get("caption")
+        text = (cap.get("text") if isinstance(cap, dict) else "") or ""
+        ts = it.get("taken_at")
+        date = ""
+        if isinstance(ts, (int, float)):
+            date = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
+        code = it.get("code") or ""
+        posts.append({
+            "caption": text,
+            "typename": str(it.get("product_type") or ""),
+            "likes": it.get("like_count"),
+            "comments": it.get("comment_count"),
+            "plays": it.get("play_count"),
+            "date": date,
+            "url": f"https://www.instagram.com/p/{code}/" if code else "",
+        })
+    return posts, biography
+
+
+async def download_account_via_sc(username: str):
+    loop = asyncio.get_event_loop()
+    return await asyncio.wait_for(loop.run_in_executor(None, _fetch_account_sc, username), timeout=120)
+
+
 async def download_reels_audio(url: str):
     """Instagram Reels videosini yt-dlp orqali yuklaydi, undan ffmpeg bilan
     audio yo'lakchasini ajratib oladi (Whisper API'ning 25MB chegarasidan

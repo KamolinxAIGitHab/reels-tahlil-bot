@@ -17,7 +17,7 @@ import time
 from urllib.parse import urlparse, parse_qs
 from openai import RateLimitError, AuthenticationError, BadRequestError
 from bot.utils.downloader import (
-    download_reels_audio, download_instagram_image, download_account_posts,
+    download_reels_audio, download_instagram_image, download_account_posts, download_account_via_sc, AccountFetchError,
     download_youtube_shorts, get_youtube_subtitles, VideoTooLongError, AudioExtractionFailedError,
     CookieExpiredError, PrivateContentError, VideoPostError, is_rate_limited,
     ReelTooLongError, MAX_REEL_SECONDS, pop_reel_author, NoAudioTrackError, pop_scrapecreators_used,
@@ -1061,17 +1061,9 @@ async def set_language(callback: CallbackQuery):
     await callback.message.edit_text(confirmations[lang])
     await callback.answer()
 
-@router.message(F.text.func(lambda text: extract_account_url(text) is not None and extract_post_url(text) is None and extract_reel_url(text) is None))
-async def handle_account(message: Message):
-    lang = user_language.get(message.from_user.id, "lang_kirill")
-
-    # Instagram web_profile_info va mobil usernameinfo endpoint'lari doimiy
-    # 429/fail qaytarmoqda (2026-09), shuning uchun funksiya vaqtincha
-    # o'chirilgan — foydalanuvchilarga uzoq kutish o'rniga darhol tushunarli
-    # xabar ko'rsatiladi. download_account_posts/analyze_account import'lari
-    # qayta yoqish oson bo'lishi uchun saqlab qolingan.
+async def _account_unavailable(message: Message, lang: str):
+    # Оддий фойдаланувчилар учун: аккаунт таҳлили ҳозирча ёпиқ (фақат маъмур синовда).
     stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "instagram_limit", "akkount tahlili vaqtincha o'chirilgan")
-
     if lang == "lang_rus":
         await message.answer(
             "🔴 Анализ аккаунта Instagram временно недоступен.\n"
@@ -1099,6 +1091,51 @@ async def handle_account(message: Message):
             "🔴 YouTube Shorts — вақтинча ишламайди\n"
             "🎤 Овозли хабар"
         )
+
+
+@router.message(F.text.func(lambda text: extract_account_url(text) is not None and extract_post_url(text) is None and extract_reel_url(text) is None))
+@_one_job_per_user
+async def handle_account(message: Message):
+    lang = user_language.get(message.from_user.id, "lang_kirill")
+    # Синов босқичи: аккаунт таҳлили фақат маъмур учун ScrapeCreators орқали ишлайди
+    # (Profile + Posts ≈ 2 кредит). Бошқалар «вақтинча ишламайди» хабарини кўради.
+    if message.from_user.id != ADMIN_USER_ID:
+        await _account_unavailable(message, lang)
+        return
+    username = extract_account_url(message.text or "")
+    status_msg = await message.answer("⏳ Аккаунт таҳлил қилиняпти...")
+    try:
+        posts, biography = await download_account_via_sc(username)
+        if not posts:
+            stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "download_error", "posts bo'sh")
+            await status_msg.edit_text("❌ Аккаунтда постлар топилмади.")
+            return
+        await status_msg.edit_text("🔍 Мазмун таҳлил қилиняпти...")
+        result = await analyze_account(posts, biography, username, lang)
+        if is_moderation_refusal(result):
+            stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "moderation", "refusal-heuristic")
+            await status_msg.edit_text(MODERATION_MESSAGES.get(lang, MODERATION_MESSAGES["lang_kirill"]))
+            return
+        result_text = f"👤 <b>@{html.escape(username)} аккаунт таҳлили:</b>\n\n{html.escape(result)}"
+        if len(result_text) > 4000:
+            await status_msg.edit_text(result_text[:4000], parse_mode="HTML")
+            await message.answer(result_text[4000:], parse_mode="HTML")
+        else:
+            await status_msg.edit_text(result_text, parse_mode="HTML")
+        stats.log_analysis(message.from_user.id, "instagram_account", lang, "success")
+    except AccountFetchError as e:
+        logging.warning(f"Аккаунт маълумотини олиб бўлмади: {e}")
+        stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "download_error", str(e))
+        await status_msg.edit_text(f"❌ Аккаунтни олиб бўлмади: {e}")
+    except asyncio.TimeoutError:
+        stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "download_error", "timeout")
+        await status_msg.edit_text("⏳ Жавоб кечикди. Кейинроқ уриниб кўринг.")
+    except Exception as e:
+        if await handle_openai_error(status_msg, lang, e, "handle_account", message.from_user.id, "instagram_account"):
+            return
+        logging.error(f"Аккаунт таҳлили хатоси: user_id={message.from_user.id} error={e}")
+        stats.log_analysis(message.from_user.id, "instagram_account", lang, "error", "other", str(e))
+        await status_msg.edit_text("❌ Хато юз берди.")
 
 @router.message(F.text.func(lambda text: extract_post_url(text) is not None))
 @_one_job_per_user
