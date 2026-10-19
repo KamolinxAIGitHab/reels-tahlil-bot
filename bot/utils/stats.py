@@ -132,6 +132,28 @@ def log_analysis(
         logging.error(f"Statistika bazasiga yozishda xato: {e}")
 
 
+def recent_errors(limit: int = 15) -> list[dict]:
+    """Охирги хатоларни (фақат ўқиш) қайтаради: вақт, манба, тур, қисқа изоҳ.
+    user_id қайтарилмайди. Хато бўлса, бўш рўйхат қайтади."""
+    try:
+        conn = _connect()
+        try:
+            rows = conn.execute(
+                "SELECT timestamp, source_type, error_type, error_detail FROM analysis_log "
+                "WHERE status = 'error' ORDER BY id DESC LIMIT ?",
+                (max(1, min(int(limit), 50)),),
+            ).fetchall()
+        finally:
+            conn.close()
+    except Exception as e:
+        logging.error(f"Хатолар рўйхатини ўқишда хато: {e}")
+        return []
+    return [
+        {"timestamp": r[0], "source_type": r[1], "error_type": r[2], "error_detail": r[3]}
+        for r in rows
+    ]
+
+
 def user_analyses_today(user_id: int) -> int:
     """Bugun (O'zbekiston sutkasi, UTC+5) shu foydalanuvchining yangi (keshdan emas)
     muvaffaqiyatli tahlillari soni. Xatoda 0 qaytaradi: hisoblash bot ishini to'xtatmasligi kerak."""

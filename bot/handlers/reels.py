@@ -6,6 +6,7 @@ import asyncio
 import functools
 from collections import deque
 import html
+from datetime import datetime, timedelta, timezone
 import os
 import re
 import shutil
@@ -987,6 +988,41 @@ async def cmd_stats(message: Message):
     is_admin = message.from_user.id == ADMIN_USER_ID
     s = stats.get_stats(None if is_admin else message.from_user.id)
     await message.answer(build_stats_text(s, lang, is_admin), parse_mode="HTML")
+
+_ERR_URL_RE = re.compile(r"https?://\S+")
+_ERR_LONGNUM_RE = re.compile(r"\d{6,}")
+
+
+def build_errors_text(rows: list) -> str:
+    """Охирги хатолар матни (админ учун). Ҳаволалар ва узун рақамлар яширилади."""
+    if not rows:
+        return "Хатолар топилмади."
+    out = ["<b>Охирги хатолар</b> (Тошкент вақти)", ""]
+    for r in rows:
+        ts = r.get("timestamp") or ""
+        try:
+            dt = datetime.fromisoformat(ts).astimezone(timezone(timedelta(hours=5)))
+            when = dt.strftime("%d.%m %H:%M")
+        except Exception:
+            when = ts[:16]
+        detail = (r.get("error_detail") or "").replace("\n", " ")
+        detail = _ERR_URL_RE.sub("[ҳавола]", detail)
+        detail = _ERR_LONGNUM_RE.sub("…", detail)[:120]
+        line = f"{when} · {r.get('source_type') or '-'} · {r.get('error_type') or '-'}"
+        if detail:
+            line += f" · {detail}"
+        out.append(html.escape(line))
+    return "\n".join(out)
+
+
+@router.message(Command("xatolar"))
+async def cmd_xatolar(message: Message):
+    # Фақат админ учун; бошқа фойдалувчига жавоб берилмайди
+    if message.from_user.id != ADMIN_USER_ID:
+        return
+    rows = stats.recent_errors(15)
+    await message.answer(build_errors_text(rows), parse_mode="HTML")
+
 
 @router.callback_query(F.data.in_({"lang_kirill", "lang_lotin", "lang_rus"}))
 async def set_language(callback: CallbackQuery):
