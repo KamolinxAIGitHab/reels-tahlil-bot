@@ -203,6 +203,9 @@ def get_stats(user_id: int | None = None) -> dict:
         # 'cookie_fallback' bilan yoziladi (status='success' saqlanadi,
         # shuning uchun today_error statistikasi buzilmaydi).
         cookie_fallback_count = count(" WHERE error_type = 'cookie_fallback'")
+        # Instagram cheklaganda ScrapeCreators zaxira yo'li orqali muvaffaqiyatli
+        # yuklangan hollar (status='success', error_type='scrapecreators').
+        scrapecreators_count = count(" WHERE error_type = 'scrapecreators'")
 
         hourly_sql = (
             "SELECT strftime('%H', timestamp, '+5 hours') as hour, COUNT(*) as count "
@@ -228,6 +231,7 @@ def get_stats(user_id: int | None = None) -> dict:
             "by_lang": by_lang,
             "fallback_used_count": fallback_used_count,
             "cookie_fallback_count": cookie_fallback_count,
+            "scrapecreators_count": scrapecreators_count,
             "hourly": hourly,
         }
     finally:

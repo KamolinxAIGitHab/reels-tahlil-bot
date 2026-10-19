@@ -19,7 +19,7 @@ from bot.utils.downloader import (
     download_reels_audio, download_instagram_image, download_account_posts,
     download_youtube_shorts, get_youtube_subtitles, VideoTooLongError, AudioExtractionFailedError,
     CookieExpiredError, PrivateContentError, VideoPostError, is_rate_limited,
-    ReelTooLongError, MAX_REEL_SECONDS, pop_reel_author, NoAudioTrackError,
+    ReelTooLongError, MAX_REEL_SECONDS, pop_reel_author, NoAudioTrackError, pop_scrapecreators_used,
 )
 from bot.utils import stats
 from bot.utils import cost as cost_utils
@@ -895,7 +895,7 @@ _STATS_TEXTS = {
         "lng": {"lang_kirill": "🇺🇿 Кирилл", "lang_lotin": "🔤 Лотин", "lang_rus": "🇷🇺 Рус"},
         "err": {"instagram_limit": "Instagram чеклов", "cookie_expired": "Instagram cookie", "bad_link": "Ҳавола очилмади",
                 "openai_credit": "OpenAI кредит", "moderation": "Модерация", "boshqa": "Бошқа"},
-        "fallback": "Захира режим (gpt-4o-mini)", "cookie": "Cookie билан юклаш",
+        "fallback": "Захира режим (gpt-4o-mini)", "cookie": "Cookie билан юклаш", "sc": "Захира йўл (ScrapeCreators)",
     },
     "lang_lotin": {
         "title_user": "📊 Sizning statistikangiz", "title_admin": "📊 Umumiy statistika (admin)",
@@ -907,7 +907,7 @@ _STATS_TEXTS = {
         "lng": {"lang_kirill": "🇺🇿 Kirill", "lang_lotin": "🔤 Lotin", "lang_rus": "🇷🇺 Rus"},
         "err": {"instagram_limit": "Instagram cheklov", "cookie_expired": "Instagram cookie", "bad_link": "Havola ochilmadi",
                 "openai_credit": "OpenAI kredit", "moderation": "Moderatsiya", "boshqa": "Boshqa"},
-        "fallback": "Fallback (gpt-4o-mini)", "cookie": "Cookie bilan yuklash",
+        "fallback": "Fallback (gpt-4o-mini)", "cookie": "Cookie bilan yuklash", "sc": "Zaxira yo'l (ScrapeCreators)",
     },
     "lang_rus": {
         "title_user": "📊 Ваша статистика", "title_admin": "📊 Общая статистика (админ)",
@@ -919,7 +919,7 @@ _STATS_TEXTS = {
         "lng": {"lang_kirill": "🇺🇿 Кириллица", "lang_lotin": "🔤 Латиница", "lang_rus": "🇷🇺 Русский"},
         "err": {"instagram_limit": "Ограничение Instagram", "cookie_expired": "Cookie Instagram", "bad_link": "Ссылка не открылась",
                 "openai_credit": "Кредит OpenAI", "moderation": "Модерация", "boshqa": "Другое"},
-        "fallback": "Резервный режим (gpt-4o-mini)", "cookie": "Загрузка с cookie",
+        "fallback": "Резервный режим (gpt-4o-mini)", "cookie": "Загрузка с cookie", "sc": "Резервный путь (ScrapeCreators)",
     },
 }
 
@@ -973,6 +973,7 @@ def build_stats_text(s: dict, lang: str, is_admin: bool) -> str:
         tech = [f"{t['err'][k]}: {v}" for k, v in et.items() if v and k in t["err"]]
         tech.append(f"{t['fallback']}: {s['fallback_used_count']}")
         tech.append(f"{t['cookie']}: {s['cookie_fallback_count']}")
+        tech.append(f"{t['sc']}: {s['scrapecreators_count']}")
         lines += ["", t["tech"], "\n".join(tech)]
 
     return "\n".join(lines)
@@ -1560,11 +1561,13 @@ async def process_reel(message: Message, url: str):
         if cached_tr:
             text, reel_caption = cached_tr
             used_cookie_fallback = False
+            used_sc = False
             author = author_get(url)
             logging.info(f"TRANSKRIPSIYA KESHI: user_id={message.from_user.id} url={url}")
         else:
             file_path, reel_caption, used_cookie_fallback = await download_reels_audio(url)
             author = pop_reel_author(url)
+            used_sc = pop_scrapecreators_used(url)
             author_put(url, author)
             tmp_dir = os.path.dirname(file_path)
 
@@ -1663,7 +1666,7 @@ async def process_reel(message: Message, url: str):
         _recent_http400.clear()
         stats.log_analysis(
             message.from_user.id, "instagram_reels", lang, "success",
-            error_type="cookie_fallback" if used_cookie_fallback else None,
+            error_type="scrapecreators" if used_sc else ("cookie_fallback" if used_cookie_fallback else None),
             fallback_used=1 if fallback_used else 0,
         )
 

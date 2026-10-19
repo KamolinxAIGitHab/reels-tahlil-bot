@@ -372,6 +372,111 @@ def pop_reel_author(url: str):
     return _AUTHORS.pop(url, None)
 
 
+# ---------------------------------------------------------------------------
+# Zaxira yo'l: ScrapeCreators API. Faqat Instagram vaqtincha cheklov qo'yganda
+# (bo'sh JSON javob / cooldown) ishlatiladi. Kalit faqat SCRAPECREATORS_API_KEY
+# muhit o'zgaruvchisidan o'qiladi, hech qachon logga yozilmaydi.
+# ---------------------------------------------------------------------------
+SCRAPECREATORS_API_KEY = os.getenv("SCRAPECREATORS_API_KEY", "")
+SCRAPECREATORS_POST_URL = os.getenv(
+    "SCRAPECREATORS_POST_URL", "https://api.scrapecreators.com/v1/instagram/post"
+)
+SCRAPECREATORS_DAILY_LIMIT = int(os.getenv("SCRAPECREATORS_DAILY_LIMIT", "20"))
+_SC_MAX_VIDEO_BYTES = 80 * 1024 * 1024
+_sc_calls: dict[str, int] = {}
+_SC_USED: set[str] = set()
+
+
+def _scrapecreators_enabled() -> bool:
+    return bool(SCRAPECREATORS_API_KEY)
+
+
+def _sc_today() -> str:
+    # O'zbekiston vaqti (UTC+5) bo'yicha sana
+    return time.strftime("%Y-%m-%d", time.gmtime(time.time() + 5 * 3600))
+
+
+def _sc_allow() -> bool:
+    """Kunlik chegaradan oshmasligini tekshiradi va hisobga oladi (kredit tejash)."""
+    day = _sc_today()
+    for k in [k for k in _sc_calls if k != day]:
+        _sc_calls.pop(k, None)
+    if _sc_calls.get(day, 0) >= SCRAPECREATORS_DAILY_LIMIT:
+        return False
+    _sc_calls[day] = _sc_calls.get(day, 0) + 1
+    return True
+
+
+def pop_scrapecreators_used(url: str) -> bool:
+    """Oxirgi yuklash zaxira yo'l orqali bo'lganmi (statistika uchun)."""
+    if url in _SC_USED:
+        _SC_USED.discard(url)
+        return True
+    return False
+
+
+def _scrapecreators_fetch(url: str, tmp_dir: str) -> str:
+    """Videoni ScrapeCreators orqali yuklab tmp_dir ga yozadi, caption qaytaradi.
+    Xato bo'lsa InstagramThrottledError ko'taradi (foydalanuvchi 'cheklov' xabarini ko'radi)."""
+    import httpx
+
+    if not _sc_allow():
+        raise InstagramThrottledError("instagram_throttled: zaxira yo'l kunlik chegarasi tugadi")
+    clean_url = url.split("?")[0]
+    try:
+        r = httpx.get(
+            SCRAPECREATORS_POST_URL,
+            params={"url": clean_url},
+            headers={"x-api-key": SCRAPECREATORS_API_KEY},
+            timeout=60,
+        )
+        payload = r.json()
+    except Exception as e:
+        raise InstagramThrottledError(
+            f"instagram_throttled: zaxira yo'l so'rovi bajarilmadi ({type(e).__name__})"
+        ) from None
+    if r.status_code != 200 or not isinstance(payload, dict) or not payload.get("success"):
+        msg = str((payload or {}).get("message") if isinstance(payload, dict) else "")[:200]
+        raise InstagramThrottledError(
+            f"instagram_throttled: zaxira yo'l xatosi (HTTP {r.status_code}) {msg}"
+        )
+    media = (payload.get("data") or {}).get("xdt_shortcode_media") or {}
+    video_url = media.get("video_url")
+    if not isinstance(video_url, str) or not video_url.startswith("https://"):
+        raise InstagramThrottledError("instagram_throttled: zaxira yo'l video manzilini bermadi")
+    duration = media.get("video_duration")
+    if isinstance(duration, (int, float)) and duration > MAX_REEL_SECONDS:
+        raise ReelTooLongError(int(duration))
+    try:
+        size = 0
+        with httpx.stream("GET", video_url, timeout=60, follow_redirects=True) as resp:
+            resp.raise_for_status()
+            with open(os.path.join(tmp_dir, "sc_video.mp4"), "wb") as f:
+                for chunk in resp.iter_bytes(1024 * 256):
+                    size += len(chunk)
+                    if size > _SC_MAX_VIDEO_BYTES:
+                        raise ValueError("video juda katta")
+                    f.write(chunk)
+    except Exception as e:
+        raise InstagramThrottledError(
+            f"instagram_throttled: zaxira yo'l videoni yuklay olmadi ({type(e).__name__})"
+        ) from None
+
+    owner = (media.get("owner") or {}).get("username")
+    if isinstance(owner, str) and _IG_HANDLE_RE.match(owner) and not owner.isdigit():
+        _remember_author(url, "@" + owner, f"https://www.instagram.com/{owner}/")
+    caption = ""
+    try:
+        caption = (media["edge_media_to_caption"]["edges"][0]["node"]["text"] or "").strip()
+    except (KeyError, IndexError, TypeError):
+        pass
+    if len(_SC_USED) >= 200:
+        _SC_USED.clear()
+    _SC_USED.add(url)
+    logging.info(f"SCRAPECREATORS ZAXIRA: video yuklandi (davomiylik={duration}, hajm={size // 1024} KB)")
+    return caption
+
+
 async def download_reels_audio(url: str):
     """Instagram Reels videosini yt-dlp orqali yuklaydi, undan ffmpeg bilan
     audio yo'lakchasini ajratib oladi (Whisper API'ning 25MB chegarasidan
@@ -420,7 +525,8 @@ async def download_reels_audio(url: str):
             # Cookie yaqinda yaroqsiz deb topilgan — Instagram'ga so'rov yubormaymiz
             raise CookieExpiredError("Instagram cookie yaroqsiz (cooldown)")
 
-        if throttle_in_cooldown():
+        in_throttle = throttle_in_cooldown()
+        if in_throttle and not _scrapecreators_enabled():
             # Instagram yaqinda cheklov qo'ygan — qo'shimcha so'rov cheklovni uzaytiradi
             raise InstagramThrottledError(
                 f"instagram_throttled: cooldown, {throttle_remaining_seconds()} soniya qoldi"
@@ -438,21 +544,33 @@ async def download_reels_audio(url: str):
 
         used_cookie = has_cookie_source
         try:
-            caption = _extract_with_retry()
-            _cookie_failures.clear()
-            _throttle_failures.clear()
+            if in_throttle:
+                # Cooldown davom etmoqda: Instagram'ga umuman so'rov yuborilmaydi
+                caption = _scrapecreators_fetch(url, tmp_dir)
+                used_cookie = False
+            else:
+                caption = _extract_with_retry()
+                _cookie_failures.clear()
+                _throttle_failures.clear()
         except Exception as e:
+            if in_throttle:
+                raise
             if _is_throttle_error(e):
                 _register_throttle_failure(url)
+                if not _scrapecreators_enabled():
+                    raise
+                # Instagram bo'sh javob berdi — zaxira yo'l orqali yuklaymiz
+                caption = _scrapecreators_fetch(url, tmp_dir)
+                used_cookie = False
+            else:
+                if _is_cookie_expired(e):
+                    logging.error(f"Instagram cookie xatosi (video yuklashda): {e}")
+                    if has_cookie_source and _should_mark_cookie_dead(url, e):
+                        _mark_cookie_dead()
+                    raise CookieExpiredError("Instagram cookie eskirgan (video yuklashda)") from e
+                if _is_private_content(e):
+                    raise PrivateContentError("Instagram kontenti xususiy (private)") from e
                 raise
-            if _is_cookie_expired(e):
-                logging.error(f"Instagram cookie xatosi (video yuklashda): {e}")
-                if has_cookie_source and _should_mark_cookie_dead(url, e):
-                    _mark_cookie_dead()
-                raise CookieExpiredError("Instagram cookie eskirgan (video yuklashda)") from e
-            if _is_private_content(e):
-                raise PrivateContentError("Instagram kontenti xususiy (private)") from e
-            raise
 
         video_path = None
         for f in os.listdir(tmp_dir):
