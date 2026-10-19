@@ -8,7 +8,7 @@ from bot.utils import cost
 
 # Таҳлил кўрсатмалари (system prompt) ўзгартирилса, бу қийматни ошириш керак:
 # шунда доимий кэшдаги эски натижалар ишлатилмайди.
-PROMPT_VERSION = "5"
+PROMPT_VERSION = "6"
 
 client = OpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
 async_client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
@@ -26,7 +26,7 @@ _SYSTEM_PROMPTS = {
         "✅ ТЕХНИК ТЎҒРИ: Матндаги илмий/техник жиҳатдан исботланган фактлар\n\n"
         "⚠️ ОРТИРИЛГАН: Ҳақиқатга яқин, лекин кўпайтириб айтилган даъволар\n\n"
         "❌ НОТЎҒРИ/АЛДАМЧИ: Ёлғон ёки чалғитувчи тезислар — аниқ сабаби билан\n\n"
-        "💡 АМАЛИЙ ҚИЙМАТ: Бор ✓ / Йўқ ✗ — 1-2 жумла изоҳ билан\n\n"
+        "💡 АМАЛИЙ ҚИЙМАТ: Бор ✓ / Йўқ ✗ — 1-2 жумла изоҳ билан. Фақат томошабин видеодаги қадамни такрорлай олишига қараб белгила; усулнинг ахлоқий баҳоси бу ерга КИРМАЙДИ, «Йўқ ✗» изоҳида ахлоқни сабаб қилиб келтирма (ахлоқий эътироз «⚠️ ОРТИРИЛГАН» даги «Ахлоқий жиҳат:» қаторига ёзилади)\n\n"
         "🎯 МАРКЕТИНГ ТАКТИКАСИ: «Изоҳ ёзинг», «Обуна бўлинг» каби comment gating усуллари — алдамчи эмас, балки маркетинг стратегияси\n\n"
         "МУҲИМ: Транскрипцияни ҳам ўзбек кирилл тилига таржима қилиб бер. "
         "Таҳлил ҳам фақат ўзбек кирилл тилида бўлсин.\n"
@@ -68,7 +68,7 @@ _SYSTEM_PROMPTS = {
         "✅ TEXNIK TO'G'RI: Matndagi ilmiy/texnik jihatdan isbotlangan faktlar\n\n"
         "⚠️ ORTIRILGAN: Haqiqatga yaqin, lekin ko'paytirib aytilgan da'volar\n\n"
         "❌ NOTO'G'RI/ALDAMCHI: Yolg'on yoki chalg'ituvchi tezislar — aniq sababi bilan\n\n"
-        "💡 AMALIY QIYMAT: Bor ✓ / Yo'q ✗ — 1-2 jumla izoh bilan\n\n"
+        "💡 AMALIY QIYMAT: Bor ✓ / Yo'q ✗ — 1-2 jumla izoh bilan. Faqat tomoshabin videodagi qadamni takrorlay olishiga qarab belgila; usulning axloqiy bahosi bu yerga KIRMAYDI, «Yo'q ✗» izohida axloqni sabab qilib keltirma (axloqiy e'tiroz «⚠️ ORTIRILGAN» dagi «Axloqiy jihat:» qatoriga yoziladi)\n\n"
         "🎯 MARKETING TAKTIKASI: «Izoh yozing», «Obuna bo'ling» kabi comment gating usullari — aldamchi emas, balki marketing strategiyasi\n\n"
         "MUHIM: Transkripsiyani ham o'zbek lotin tiliga tarjima qilib ber. "
         "Tahlil ham lotin tilida bo'lsin.\n"
@@ -110,7 +110,7 @@ _SYSTEM_PROMPTS = {
         "✅ ТЕХНИЧЕСКИ ВЕРНО: Научно/технически подтверждённые факты из текста\n\n"
         "⚠️ ПРЕУВЕЛИЧЕНО: Утверждения, близкие к правде, но преувеличенные\n\n"
         "❌ НЕВЕРНО/ВВОДЯЩЕЕ В ЗАБЛУЖДЕНИЕ: Ложные или вводящие в заблуждение тезисы — с конкретной причиной\n\n"
-        "💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: Есть ✓ / Нет ✗ — с пояснением в 1-2 предложения\n\n"
+        "💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: Есть ✓ / Нет ✗ — с пояснением в 1-2 предложения. Оценивай только по тому, может ли зритель повторить шаг из видео; этическая оценка метода сюда НЕ входит, не называй этику причиной для «Нет ✗» (этическое возражение пишется в «⚠️ ПРЕУВЕЛИЧЕНО» в строке «Этическая сторона:»)\n\n"
         "🎯 МАРКЕТИНГОВАЯ ТАКТИКА: Методы comment gating («напишите комментарий», «подпишитесь») — не обман, а маркетинговая стратегия\n\n"
         "MUHIM: Transkripsiyani ham rus tiliga tarjima qilib ber. "
         "Tahlil ham rus tilida bo'lsin.\n"
@@ -235,7 +235,7 @@ _QUALITY_RULES = {
         "25. Матн фақат оддий саломлашув, миннатдорчилик ёки мазмунсиз қисқа жумладан («Привет», «Салом», «Assalomu alaykum», «Спасибо» каби) иборат бўлса, «💡 АМАЛИЙ ҚИЙМАТ» да ҳамиша «Йўқ ✗» ёз ва «🚀 СИНАБ КЎРИШ» бўлимини умуман ёзма. Саломлашув тили (рус, инглиз ва бошқа) бу қоидани ўзгартирмайди; «Бор ✓» ёки «Есть ✓» ёзма.\n"
         "26. Видеода ёки изоҳда тариф, обуна, нарх, тўлов миқдори, чегирма, лимит ёки «бепул» шарти айтилса («ойига 20 доллар», «Pro тариф», «ҳозирча бепул»), ҳар бирини «⚠️ ОРТИРИЛГАН» блокида ҳар доим алоҳида қаторда «текшириш керак: тариф ва нарх тез ўзгаради, расмий сайтда тасдиқланг» деб белгила. Аниқ ибора ёки рақамни келтир. Даъво тўғридек туюлса ҳам, уни «✅ ТЕХНИК ТЎҒРИ» га қўйма. Тариф ва нарх айтилмаган бўлса, бу қаторни ўйлаб топма.\n"
         "27. «💡 АМАЛИЙ ҚИЙМАТ» усулнинг ахлоқий баҳосига боғлиқ эмас. Усул ахлоқий жиҳатдан шубҳали, лекин қонуний бўлса ва томошабин аниқ қадамни такрорлай олса, «Бор ✓» деб ёз; ахлоқий эътирозни «⚠️ ОРТИРИЛГАН» ёки изоҳда алоҳида айт.\n"
-        "28. Видео ёки изоҳда усул ахлоқий жиҳатдан шубҳали деб айтилса («ноэтик», «аёвсиз») ёки бошқа одамни чалғитиши мумкин бўлса (масалан, сўровсиз мижозга AI орқали мурожаат қилиш), «⚠️ ОРТИРИЛГАН» да бу эътирозни алоҳида қаторда «Ахлоқий жиҳат:» деб ёз. Агар «Бор ✓» бўлса ҳам, бу қаторни тушириб қолдирма.\n"
+        "28. Видео ёки изоҳда усул ахлоқий жиҳатдан шубҳали деб айтилса («ноэтик», «аёвсиз») ёки бошқа одамни чалғитиши мумкин бўлса (масалан, сўровсиз мижозга AI орқали мурожаат қилиш ёки AI нинг компания номи билан жавоб бериши), аввало шу чалғитиш ёки ёлғон жиҳатини, кейин бошқа таъсирларни ёз; «⚠️ ОРТИРИЛГАН» да бу эътирозни алоҳида қаторда «Ахлоқий жиҳат:» деб ёз. Агар «Бор ✓» бўлса ҳам, бу қаторни тушириб қолдирма.\n"
         "29. «🚀 СИНАБ КЎРИШ» да «Восита/платформа» — аниқ номли восита (масалан, ChatGPT, Make.com), «AI агент» каби умумий сўз эмас; аниқ номи йўқ бўлса, «[контентда кўрсатилмаган]» деб ёз. «Вақт» — давомийлик (масалан, «2–3 соат»), даъво эмас.\n"
     ),
     "lang_lotin": (
@@ -290,7 +290,7 @@ _QUALITY_RULES = {
         "24. Matn faqat oddiy salomlashuv, minnatdorchilik yoki mazmunsiz qisqa jumladan («Привет», «Salom», «Assalomu alaykum», «Спасибо» kabi) iborat bo'lsa, «💡 AMALIY QIYMAT» da hamisha «Yo'q ✗» yoz va «🚀 SINAB KO'RISH» bo'limini umuman yozma. Salomlashuv tili (rus, ingliz va boshqa) bu qoidani o'zgartirmaydi; «Bor ✓» yoki «Есть ✓» yozma.\n"
         "25. Videoda yoki izohda tarif, obuna, narx, to'lov miqdori, chegirma, limit yoki «bepul» sharti aytilsa («oyiga 20 dollar», «Pro tarif», «hozircha bepul»), har birini «⚠️ ORTIRILGAN» blokida har doim alohida qatorda «tekshirish kerak: tarif va narx tez o'zgaradi, rasmiy saytda tasdiqlang» deb belgila. Aniq ibora yoki raqamni keltir. Da'vo to'g'ridek tuyulsa ham, uni «✅ TEXNIK TO'G'RI» ga qo'yma. Tarif va narx aytilmagan bo'lsa, bu qatorni o'ylab topma.\n"
         "26. «💡 AMALIY QIYMAT» usulning axloqiy bahosiga bog'liq emas. Usul axloqiy jihatdan shubhali, lekin qonuniy bo'lsa va tomoshabin aniq qadamni takrorlay olsa, «Bor ✓» deb yoz; axloqiy e'tirozni «⚠️ ORTIRILGAN» yoki izohda alohida ayt.\n"
-        "27. Videoda yoki izohda usul axloqiy jihatdan shubhali deb aytilsa («noetik», «ayovsiz») yoki boshqa odamni chalg'itishi mumkin bo'lsa (masalan, so'rovsiz mijozga AI orqali murojaat qilish), «⚠️ ORTIRILGAN» da bu e'tirozni alohida qatorda «Axloqiy jihat:» deb yoz. «Bor ✓» bo'lsa ham, bu qatorni tushirib qoldirma. Huquqiy da'vo («mutlaqo qonuniy») ham alohida qatorda «tekshirilmagan» deb sanalsin.\n"
+        "27. Videoda yoki izohda usul axloqiy jihatdan shubhali deb aytilsa («noetik», «ayovsiz») yoki boshqa odamni chalg'itishi mumkin bo'lsa (masalan, so'rovsiz mijozga AI orqali murojaat qilish yoki AI ning kompaniya nomi bilan javob berishi), avvalo shu chalg'itish yoki yolg'on jihatini, keyin boshqa ta'sirlarni yoz; «⚠️ ORTIRILGAN» da bu e'tirozni alohida qatorda «Axloqiy jihat:» deb yoz. «Bor ✓» bo'lsa ham, bu qatorni tushirib qoldirma. Huquqiy da'vo («mutlaqo qonuniy») ham alohida qatorda «tekshirilmagan» deb sanalsin.\n"
         "28. «🚀 SINAB KO'RISH» da «Vosita/platforma» — aniq nomli vosita (masalan, ChatGPT, Make.com), «AI agent» kabi umumiy so'z emas; aniq nomi yo'q bo'lsa, «[kontentda ko'rsatilmagan]» deb yoz. «Vaqt» — davomiylik (masalan, «2–3 soat»), da'vo emas.\n"
     ),
     "lang_rus": (
@@ -342,7 +342,7 @@ _QUALITY_RULES = {
         "22. Если текст состоит только из простого приветствия, благодарности или бессодержательной короткой фразы («Привет», «Салом», «Assalomu alaykum», «Спасибо» и т.п.), в «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» всегда пиши «Нет ✗» и раздел «🚀 КАК ПОПРОБОВАТЬ» не пиши вовсе. Язык приветствия (русский, английский или другой) это правило не меняет; «Есть ✓» не пиши.\n"
         "23. Если в видео или подписи названы тариф, подписка, цена, размер платежа, скидка, лимит или условие «бесплатно» («20 долларов в месяц», «тариф Pro», «пока бесплатно»), всегда отмечай каждое в блоке «⚠️ ПРЕУВЕЛИЧЕНО» отдельной строкой: «требует проверки: тарифы и цены быстро меняются, подтвердите на официальном сайте». Приводи конкретную фразу или число. Даже если утверждение кажется верным, не относи его к «✅ ТЕХНИЧЕСКИ ВЕРНО». Если тарифов и цен нет, не выдумывай эту строку.\n"
         "24. Практическая ценность не зависит от этичности метода. Если метод спорный с этической точки зрения, но законный, и зритель может повторить конкретный шаг, в «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» пиши «Есть ✓» и укажи этическое возражение отдельно в «⚠️ ПРЕУВЕЛИЧЕНО» или в пояснении.\n"
-        "25. Если в видео или подписи метод назван неэтичным («неэтично», «без жалости») или может ввести людей в заблуждение (например, обращение к клиенту через ИИ без его запроса), в «⚠️ ПРЕУВЕЛИЧЕНО» напиши это отдельной строкой «Этическая сторона:», даже если стоит «Есть ✓». Юридические утверждения («абсолютно легально») тоже перечисли отдельной строкой как непроверенные.\n"
+        "25. Если в видео или подписи метод назван неэтичным («неэтично», «без жалости») или может ввести людей в заблуждение (например, обращение к клиенту через ИИ без его запроса или ответы ИИ от имени компании), сначала назови именно этот обман или введение в заблуждение, затем прочие последствия; в «⚠️ ПРЕУВЕЛИЧЕНО» напиши это отдельной строкой «Этическая сторона:», даже если стоит «Есть ✓». Юридические утверждения («абсолютно легально») тоже перечисли отдельной строкой как непроверенные.\n"
         "26. В «🚀 КАК ПОПРОБОВАТЬ» «Инструмент/платформа» — конкретное название (например, ChatGPT, Make.com), а не общие слова вроде «AI-агент»; если названия нет, пиши «[в контенте не указано]». «Время» — длительность (например, «2–3 часа»), а не утверждение.\n"
     ),
 }
