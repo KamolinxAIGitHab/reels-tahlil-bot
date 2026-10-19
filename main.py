@@ -49,7 +49,7 @@ async def main():
         BotCommand(command="stats", description="Статистика"),
     ])
 
-    # /xarajat фақат маъмурнинг менюсида кўринади (бошқа фойдаланувчиларда йўқ)
+    # /xarajat ва /xatolar фақат маъмурнинг менюсида кўринади (бошқа фойдаланувчиларда йўқ)
     try:
         if not reels.ADMIN_USER_ID:
             raise RuntimeError("ADMIN_USER_ID ўрнатилмаган")
@@ -59,6 +59,7 @@ async def main():
                 BotCommand(command="help", description="Ёрдам / Помощь"),
                 BotCommand(command="stats", description="Статистика"),
                 BotCommand(command="xarajat", description="OpenAI харажати (маъмур)"),
+                BotCommand(command="xatolar", description="Охирги хатолар (маъмур)"),
             ],
             scope=BotCommandScopeChat(chat_id=reels.ADMIN_USER_ID),
         )
