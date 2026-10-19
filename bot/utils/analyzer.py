@@ -8,7 +8,7 @@ from bot.utils import cost
 
 # Таҳлил кўрсатмалари (system prompt) ўзгартирилса, бу қийматни ошириш керак:
 # шунда доимий кэшдаги эски натижалар ишлатилмайди.
-PROMPT_VERSION = "9"
+PROMPT_VERSION = "10"
 
 client = OpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
 async_client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
@@ -228,7 +228,7 @@ _QUALITY_RULES = {
         "18. Агар «💡 АМАЛИЙ ҚИЙМАТ» да «Бор ✓» деб ёзсанг, «🚀 СИНАБ КЎРИШ» бўлими МАЖБУРИЙ: биринчи қадам, восита ва вақтни кўрсат. «Бор ✓» ни фақат видеода ҳақиқатан кўрсатилган аниқ қадам ёки восита бўлсагина қўй; фақат ваъда ва даъво бўлса — «Йўқ ✗».\n"
         "19. Видеода шахсий даромад, сотув ёки обуначи натижалари айтилса («555 минг рубл», «10 минг обуначи»), уларни «⚠️ ОРТИРИЛГАН» да «текширилмаган» деб белгила. Видеонинг мақсади курс ёки хизматни сотиш бўлса (кодли сўзга «совға» ваъдаси, «директга ёзинг» каби), «🎯 МАРКЕТИНГ ТАКТИКАСИ» да буни очиқ «реклама ва сотув воронкаси» деб ёз.\n"
         "20. Видеода ҳуқуқий даъво («бу қонуний», «рухсат этилган»), нарх, миқдор ёки ҳажм рақамлари («300 дан ортиқ илова», «ойига 20 доллар») айтилса (масалан, «мутлақо қонуний»), уларни «⚠️ ОРТИРИЛГАН» да ҳар бирини алоҳида қаторда «текширилмаган» деб санаб ўт. Бу блокни умумий гап билан тўлдирма: аниқ ибора ёки рақамни келтир. Аудиода «МСП» ёки «эм-си-пи» деб эшитилса, «MCP» деб ёз.\n"
-        "21. «💡 АМАЛИЙ ҚИЙМАТ» да «Бор ✓» ни фақат томошабин ўзи такрорлай оладиган аниқ қадам ёки восита бўлса қўй. Муаллифнинг ўз ишлари, кундалиги ёки натижалари ҳақидаги ҳикоя учун «Йўқ ✗» ёз. Агар муаллиф томошабинга мурожаат қилиб («сиз қидирасиз, юклайсиз, қўнғироқ қиласиз») кетма-кет аниқ қадамларни айтса, восита номи айтилмаган бўлса ҳам «Бор ✓» ёз ва «Восита/платформа» га «[контентда кўрсатилмаган]» деб ёз; «Йўқ ✗» ни фақат қадамлар умуман йўқ, фақат ваъда бўлса қўй. «🚀 СИНАБ КЎРИШ» да томошабин қила оладиган ҳаракатни ёз; муаллифнинг даъвосини ёки натижа муддатини («30 кунда натижа» каби) такрорлама.\n"
+        "21. «💡 АМАЛИЙ ҚИЙМАТ» да «Бор ✓» ни фақат томошабин ўзи такрорлай оладиган аниқ қадам ёки восита бўлса қўй. Муаллифнинг ўз ишлари, кундалиги ёки натижалари ҳақидаги ҳикоя учун «Йўқ ✗» ёз. Агар муаллиф томошабинга мурожаат қилиб («сиз қидирасиз, юклайсиз, қўнғироқ қиласиз») ёки «биз» шаклида («биз Printify ишлатамиз, дизайнни қўшамиз») кетма-кет аниқ қадамларни кўрсатса ва воситаларни номласа, восита номи айтилмаган бўлса ҳам «Бор ✓» ёз ва «Восита/платформа» га «[контентда кўрсатилмаган]» деб ёз; «Йўқ ✗» ни фақат қадамлар умуман йўқ, фақат ваъда бўлса қўй. «🚀 СИНАБ КЎРИШ» да томошабин қила оладиган ҳаракатни ёз; муаллифнинг даъвосини ёки натижа муддатини («30 кунда натижа» каби) такрорлама.\n"
         "22. Видеода бошқа давлатнинг қонуни, органи ёки солиқ тартиби (Роскомнадзор, ИП, самозанятость, рубль ва ш.к.) тилга олинса, таҳлилда ҳар бирини номи билан санаб, «Россия учун; Ўзбекистонга тўғри келмаслиги мумкин» деб белги. Бу албатта «⚠️ ОРТИРИЛГАН» қаторида, органнинг ўз номи билан бўлсин; номсиз умумий жумла ёзма. Бундай органни «🚀 СИНАБ КЎРИШ» да томошабинга қадам қилиб берма.\n"
         "23. «Аудио сифати паст» каби огоҳлантиришни ўзинг ёзма: у автоматик қўшилади. Исм, жой номи ва рақамлар аниқ бўлмаса, уларни «✅ ТЕХНИК ТЎҒРИ» да факт сифатида тасдиқлама.\n"
         "24. Маркетинг тактикаси қаторидаги «» ичидаги иқтибосни изоҳ ёки аудиодаги сўзларга аниқ мос ёз: сўзни ўзинг алмаштирма ва бошқа маънога ўзгартирма (масалан, «darslik» ни «дўстлик» деб ёзма); фақат ёзувни танланган ёзувга ўгир.\n"
@@ -284,7 +284,7 @@ _QUALITY_RULES = {
         "17. Agar «💡 AMALIY QIYMAT» da «Bor ✓» deb yozsang, «🚀 SINAB KO'RISH» bo'limi MAJBURIY: birinchi qadam, vosita va vaqtni ko'rsat. «Bor ✓» ni faqat videoda haqiqatan ko'rsatilgan aniq qadam yoki vosita bo'lsagina qo'y; faqat va'da va da'vo bo'lsa — «Yo'q ✗».\n"
         "18. Videoda shaxsiy daromad, sotuv yoki obunachi natijalari aytilsa («555 ming rubl», «10 ming obunachi»), ularni «⚠️ ORTIRILGAN» bo'limida «tekshirilmagan» deb belgila. Video maqsadi kurs yoki xizmat sotish bo'lsa (kod so'zga «sovg'a» va'dasi, «direktga yozing» kabi), «🎯 MARKETING TAKTIKASI» da buni ochiq «reklama va sotuv voronkasi» deb yoz.\n"
         "19. Videoda huquqiy da'vo («bu qonuniy», «ruxsat etilgan»), narx, miqdor yoki hajm raqamlari («300 dan ortiq ilova», «oyiga 20 dollar») aytilsa, ularni «⚠️ ORTIRILGAN» da alohida «tekshirilmagan» deb sanab o't. Bu blokni umumiy gap bilan to'ldirma: aniq ibora yoki raqamni keltir. Audioda «MSP» yoki «em-si-pi» deb eshitilsa, «MCP» deb yoz.\n"
-        "20. «💡 AMALIY QIYMAT» da «Bor ✓» ni faqat tomoshabin o'zi takrorlay oladigan aniq qadam yoki vosita bo'lsa qo'y. Muallif tomoshabinga murojaat qilib («siz qidirasiz, yuklaysiz, qo'ng'iroq qilasiz») ketma-ket aniq qadamlarni aytsa, vosita nomi aytilmagan bo'lsa ham «Bor ✓» yoz va «Vosita/platforma» ga «[kontentda ko'rsatilmagan]» deb yoz; «Yo'q ✗» ni faqat qadamlar umuman yo'q, faqat va'da bo'lsa qo'y. Muallifning o'z ishlari, kundaligi yoki natijalari haqidagi hikoya uchun «Yo'q ✗» yoz. «🚀 SINAB KO'RISH» da tomoshabin qila oladigan harakatni yoz; muallifning da'vosini yoki natija muddatini («30 kunda natija» kabi) takrorlama.\n"
+        "20. «💡 AMALIY QIYMAT» da «Bor ✓» ni faqat tomoshabin o'zi takrorlay oladigan aniq qadam yoki vosita bo'lsa qo'y. Muallif tomoshabinga murojaat qilib («siz qidirasiz, yuklaysiz, qo'ng'iroq qilasiz») yoki «biz» shaklida («biz Printify ishlatamiz, dizaynni qo'shamiz») ketma-ket aniq qadamlarni ko'rsatsa va vositalarni nomlasa, vosita nomi aytilmagan bo'lsa ham «Bor ✓» yoz va «Vosita/platforma» ga «[kontentda ko'rsatilmagan]» deb yoz; «Yo'q ✗» ni faqat qadamlar umuman yo'q, faqat va'da bo'lsa qo'y. Muallifning o'z ishlari, kundaligi yoki natijalari haqidagi hikoya uchun «Yo'q ✗» yoz. «🚀 SINAB KO'RISH» da tomoshabin qila oladigan harakatni yoz; muallifning da'vosini yoki natija muddatini («30 kunda natija» kabi) takrorlama.\n"
         "21. Videoda boshqa davlatning qonuni, organi yoki soliq tartibi (Roskomnadzor, IP, samozanyatost, rubl va h.k.) tilga olinsa, tahlilda har birini nomi bilan sanab, «Rossiya uchun; O'zbekistonga to'g'ri kelmasligi mumkin» deb belgila. Bu albatta «⚠️ ORTIRILGAN» qatorida, organning o'z nomi bilan bo'lsin; nomsiz umumiy jumla yozma. Bunday organni «🚀 SINAB KO'RISH» da tomoshabinga qadam qilib berma.\n"
         "22. «Audio sifati past» kabi ogohlantirishni o'zing yozma: u avtomatik qo'shiladi. Ism, joy nomi va raqamlar aniq bo'lmasa, ularni «✅ TEXNIK TO'G'RI» da fakt sifatida tasdiqlama.\n"
         "23. Marketing taktikasi qatoridagi «» ichidagi iqtibosni izoh yoki audiodagi so'zlarga aniq mos yoz: so'zni o'zing almashtirma va boshqa ma'noga o'zgartirma (masalan, «darslik» ni «do'stlik» deb yozma); faqat yozuvni tanlangan yozuvga o'gir.\n"
@@ -337,7 +337,7 @@ _QUALITY_RULES = {
         "15. Если в «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» пишешь «Есть ✓», раздел «🚀 КАК ПОПРОБОВАТЬ» ОБЯЗАТЕЛЕН: первый шаг, инструмент и время. «Есть ✓» ставь только если в видео реально показаны конкретные шаги или инструмент; если только обещания и заявления — «Нет ✗».\n"
         "16. Если в видео названы личные доходы, продажи или результаты по подписчикам («555 тысяч рублей», «10 тысяч подписчиков»), отмечай их в «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено». Если цель видео — продать курс или услугу (обещание «подарка» за кодовое слово, «пиши в директ»), прямо назови это рекламой и воронкой продаж в «🎯 МАРКЕТИНГОВАЯ ТАКТИКА».\n"
         "17. Если в видео звучат правовые утверждения («это законно», «разрешено»), цены, количества или объёмы («более 300 приложений», «20 долларов в месяц»), перечисли их отдельно в «⚠️ ПРЕУВЕЛИЧЕНО» как «не проверено». Не заполняй этот блок общими фразами: приводи конкретную фразу или число. Если в аудио слышится «МСП» или «эм-си-пи», пиши «MCP».\n"
-        "18. В «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» ставь «Есть ✓» только если зритель сам может повторить конкретный шаг или использовать инструмент. Если автор обращается к зрителю («вы ищете, загружаете, звоните») и называет последовательные конкретные шаги, ставь «Есть ✓» даже без названия инструмента (в поле инструмента пиши «[в контенте не указано]»); «Нет ✗» ставь только если шагов нет вовсе и есть лишь обещания. Для рассказа автора о своих делах, дневника или результатов пиши «Нет ✗». В «🚀 КАК ПОПРОБОВАТЬ» пиши действие, которое может выполнить зритель; не повторяй заявление автора и срок результата («результат за 30 дней»).\n"
+        "18. В «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» ставь «Есть ✓» только если зритель сам может повторить конкретный шаг или использовать инструмент. Если автор обращается к зрителю («вы ищете, загружаете, звоните») или говорит «мы» («мы используем Printify, добавляем дизайн») и называет последовательные конкретные шаги и инструменты, ставь «Есть ✓» даже без названия инструмента (в поле инструмента пиши «[в контенте не указано]»); «Нет ✗» ставь только если шагов нет вовсе и есть лишь обещания. Для рассказа автора о своих делах, дневника или результатов пиши «Нет ✗». В «🚀 КАК ПОПРОБОВАТЬ» пиши действие, которое может выполнить зритель; не повторяй заявление автора и срок результата («результат за 30 дней»).\n"
         "19. Если в видео упоминаются закон, орган или налоговый режим другой страны (Роскомнадзор, ИП, самозанятость, рубль и т.п.), отметь в анализе каждый из них по названию: «для России; для Узбекистана может не подходить». Это обязательно в строке «⚠️ ПРЕУВЕЛИЧЕНО», с самим названием органа; общих фраз без названия не пиши. Такой орган не давай зрителю как шаг в «🚀 КАК ПОПРОБОВАТЬ».\n"
         "20. Предупреждение вроде «Качество аудио низкое» не пиши сам: оно добавляется автоматически. Имена, названия мест и числа, в которых нет уверенности, не подтверждай как факты в «✅ ТЕХНИЧЕСКИ ВЕРНО».\n"
         "21. Цитату в «» в строке про маркетинговую тактику бери из описания или аудио точно по словам: не заменяй слова и не меняй смысл (например, «darslik» не превращай в «дружба»); меняй только письменность на выбранную.\n"
@@ -487,7 +487,7 @@ _VALUE_FIX = {
 }
 
 
-def _fix_ethics_value(result: str, lang: str, messages: list, model: str) -> str:
+def _fix_ethics_value(result: str, lang: str, messages: list, model: str, source: str = "") -> str:
     """«Амалий қиймат: Йўқ ✗» сабаби ахлоқ бўлса, фақат шу қаторни бир марта
     қайта сўрайди. Хато ёки номувофиқ жавобда асл натижа қайтади."""
     if not result:
@@ -503,9 +503,17 @@ def _fix_ethics_value(result: str, lang: str, messages: list, model: str) -> str
         return result
     line = lines[pos]
     low = line.lower()
-    if not any(m in line for m in _NEG_MARKERS) or not any(st in low for st in _ETHICS_STEMS):
+    if not any(m in line for m in _NEG_MARKERS):
         return result
-    followup = _VALUE_FIX.get(lang, _VALUE_FIX["lang_kirill"])
+    brands = _named_brands(source)
+    if any(st in low for st in _ETHICS_STEMS):
+        followup = _VALUE_FIX.get(lang, _VALUE_FIX["lang_kirill"])
+        check_ethics = True
+    elif len(brands) >= 2 and any(st in low for st in _TOOL_STEMS):
+        followup = _TOOLS_FIX.get(lang, _TOOLS_FIX["lang_kirill"]).format(brands=", ".join(brands[:6]))
+        check_ethics = False
+    else:
+        return result
     try:
         _resp = client.chat.completions.create(
             model=model,
@@ -523,10 +531,40 @@ def _fix_ethics_value(result: str, lang: str, messages: list, model: str) -> str
         return result
     if not (any(m in new_line for m in _NEG_MARKERS) or any(m in new_line for m in _POSITIVE_MARKERS)):
         return result
-    if any(st in new_line.lower() for st in _ETHICS_STEMS):
+    if check_ethics and any(st in new_line.lower() for st in _ETHICS_STEMS):
         return result
     lines[pos] = new_line
     return "\n".join(lines)
+
+
+_TOOL_STEMS = ("восит", "vosit", "инструмент", "qadam", "қадам", "шаг")
+_BRAND_RE = re.compile(r"\b[A-Z][A-Za-z0-9]{3,}\b")
+_BRAND_SKIP = {"Telegram", "Instagram", "Reels", "Reel", "CAPTION", "AUDIO", "Payoneer", "Izoh", "Audio"}
+_TOOLS_FIX = {
+    "lang_kirill": (
+        "«💡 АМАЛИЙ ҚИЙМАТ» қаторида «Йўқ ✗» сабаби «восита ёки қадам йўқ» деб кўрсатилган, лекин видеода воситалар номланган "
+        "({brands}). Қайта текшир: агар муаллиф («сиз» ёки «биз» шаклида) кетма-кет аниқ қадамларни кўрсатган ва воситаларни "
+        "номлаган бўлса, «Бор ✓» деб ёз ва биринчи қадамни 1 жумлада айт. Фақат умумий ваъда ва даъво бўлса, «Йўқ ✗» қолдир. "
+        "Фақат шу битта қаторни ёз: «💡 АМАЛИЙ ҚИЙМАТ:» билан бошла. Бошқа ҳеч нарса ёзма."),
+    "lang_lotin": (
+        "«💡 AMALIY QIYMAT» qatorida «Yo'q ✗» sababi «vosita yoki qadam yo'q» deb ko'rsatilgan, lekin videoda vositalar nomlangan "
+        "({brands}). Qayta tekshir: agar muallif («siz» yoki «biz» shaklida) ketma-ket aniq qadamlarni ko'rsatgan va vositalarni "
+        "nomlagan bo'lsa, «Bor ✓» deb yoz va birinchi qadamni 1 jumlada ayt. Faqat umumiy va'da va da'vo bo'lsa, «Yo'q ✗» qoldir. "
+        "Faqat shu bitta qatorni yoz: «💡 AMALIY QIYMAT:» bilan boshla. Boshqa hech narsa yozma."),
+    "lang_rus": (
+        "В строке «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» причиной «Нет ✗» указано «нет инструмента или шагов», но в видео названы инструменты "
+        "({brands}). Проверь ещё раз: если автор (в форме «вы» или «мы») показывает последовательные конкретные шаги и называет "
+        "инструменты, напиши «Есть ✓» и назови первый шаг одним предложением. Если только общие обещания и заявления, оставь «Нет ✗». "
+        "Напиши только эту одну строку, начав с «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ:». Больше ничего не пиши."),
+}
+
+
+def _named_brands(source: str) -> list:
+    found = []
+    for b in _BRAND_RE.findall(source or ""):
+        if b not in _BRAND_SKIP and b not in found:
+            found.append(b)
+    return found
 
 
 _TRY_HEADERS = ("🚀 СИНАБ КЎРИШ", "🚀 SINAB KO'RISH", "🚀 КАК ПОПРОБОВАТЬ")
@@ -635,7 +673,7 @@ def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o")
     response = client.chat.completions.create(model=model, messages=messages, temperature=_ANALYSIS_TEMPERATURE)
     cost.record_chat(response, "analyze_content")
     result = response.choices[0].message.content
-    result = _fix_ethics_value(result, lang, messages, model)
+    result = _fix_ethics_value(result, lang, messages, model, text)
     result = _ensure_try_block(result, lang, messages, model)
     # Рад жавоби (💡 қатори йўқ) учун бузуқлик текшируви керак эмас: у захира моделда такрорланади.
     garbled = "💡" in (result or "") and _audio_is_garbled(_audio_part(text))
