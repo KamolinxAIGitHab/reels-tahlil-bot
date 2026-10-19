@@ -68,6 +68,60 @@ _RATE_LIMIT_MARKERS = (
     "wait a few minutes",
 )
 
+# Instagram so'rovni vaqtincha cheklaganida yt-dlp ko'pincha bo'sh javob oladi va
+# "Failed to parse JSON ... line 1 column 1" xatosini beradi. Bu cookie yoki
+# yt-dlp versiyasi muammosi emas, balki vaqtinchalik cheklov belgisi.
+_THROTTLE_MARKERS = (
+    "failed to parse json",
+    "instagram_throttled",
+)
+
+# Cheklov deb hisoblash uchun THROTTLE_FAIL_DISTINCT_URLS ta turli havolada
+# THROTTLE_FAIL_WINDOW_SECONDS ichida shunday xato chiqishi kerak (bitta
+# havoladagi xato havolaning o'zidagi muammo bo'lishi mumkin). Shundan keyin
+# THROTTLE_COOLDOWN_SECONDS davomida Instagram'ga so'rov yuborilmaydi:
+# har bir xato so'rov cheklovni uzaytiradi.
+THROTTLE_COOLDOWN_SECONDS = int(os.environ.get("IG_THROTTLE_COOLDOWN_SECONDS", str(15 * 60)))
+THROTTLE_FAIL_WINDOW_SECONDS = 10 * 60
+THROTTLE_FAIL_DISTINCT_URLS = 2
+_throttled_until = 0.0
+_throttle_failures: dict[str, float] = {}
+
+
+class InstagramThrottledError(Exception):
+    """Instagram vaqtincha cheklov qo'ygan (cooldown davom etmoqda).
+    Matnida "instagram_throttled" belgisi bor — is_rate_limited() uni taniydi."""
+
+
+def throttle_in_cooldown() -> bool:
+    return time.monotonic() < _throttled_until
+
+
+def throttle_remaining_seconds() -> int:
+    return max(0, int(_throttled_until - time.monotonic()))
+
+
+def _is_throttle_error(e: Exception) -> bool:
+    msg = str(e).lower()
+    return any(k in msg for k in _THROTTLE_MARKERS)
+
+
+def _register_throttle_failure(url: str) -> None:
+    """Cheklov xatosini qayd etadi; yetarli bo'lsa cooldown'ni yoqadi."""
+    global _throttled_until
+    now = time.monotonic()
+    for key in [k for k, t in _throttle_failures.items() if now - t > THROTTLE_FAIL_WINDOW_SECONDS]:
+        _throttle_failures.pop(key, None)
+    _throttle_failures[(url or "").split("?")[0]] = now
+    logging.warning(f"INSTAGRAM CHEKLOV: bo'sh javob (JSON parse xatosi), url={url}")
+    if len(_throttle_failures) >= THROTTLE_FAIL_DISTINCT_URLS and not throttle_in_cooldown():
+        _throttled_until = now + THROTTLE_COOLDOWN_SECONDS
+        logging.error(
+            f"INSTAGRAM CHEKLOV: {THROTTLE_COOLDOWN_SECONDS // 60} daqiqa davomida "
+            f"Instagram'ga so'rov yuborilmaydi"
+        )
+
+
 # Cookie yaroqsiz deb topilgach, shu vaqt davomida Instagram'ga umuman
 # so'rov yuborilmaydi — o'lik cookie bilan qayta-qayta so'rov yuborish
 # akkauntni xavf ostiga qo'yadi (yangi cookie qo'yilganda bot qayta
@@ -163,11 +217,16 @@ def _is_cookie_expired(e: Exception) -> bool:
     return any(k in msg for k in _COOKIE_ERROR_MARKERS)
 
 
-def is_rate_limited(e: Exception) -> bool:
-    """Berilgan xato Instagram'ning haqiqiy so'rovlar limitini
-    bildiradimi, shuni tekshiradi."""
+def _is_real_429(e: Exception) -> bool:
+    """Faqat aniq 429 / "wait a few minutes" belgilari (qayta urinish uchun)."""
     msg = str(e).lower()
     return any(k in msg for k in _RATE_LIMIT_MARKERS)
+
+
+def is_rate_limited(e: Exception) -> bool:
+    """Berilgan xato Instagram'ning so'rovlar limitini yoki vaqtincha
+    cheklovini (bo'sh javob / JSON parse xatosi, cooldown) bildiradimi."""
+    return _is_real_429(e) or _is_throttle_error(e)
 
 
 def _is_private_content(e: Exception) -> bool:
@@ -361,11 +420,17 @@ async def download_reels_audio(url: str):
             # Cookie yaqinda yaroqsiz deb topilgan — Instagram'ga so'rov yubormaymiz
             raise CookieExpiredError("Instagram cookie yaroqsiz (cooldown)")
 
+        if throttle_in_cooldown():
+            # Instagram yaqinda cheklov qo'ygan — qo'shimcha so'rov cheklovni uzaytiradi
+            raise InstagramThrottledError(
+                f"instagram_throttled: cooldown, {throttle_remaining_seconds()} soniya qoldi"
+            )
+
         def _extract_with_retry() -> str:
             try:
                 return _extract(has_cookie_source)
             except Exception as e:
-                if is_rate_limited(e) and not _is_cookie_expired(e):
+                if _is_real_429(e) and not _is_cookie_expired(e):
                     logging.warning("Instagram 429 — 25 soniya kutib, bir marta qayta uriniladi")
                     time.sleep(25)
                     return _extract(has_cookie_source)
@@ -375,7 +440,11 @@ async def download_reels_audio(url: str):
         try:
             caption = _extract_with_retry()
             _cookie_failures.clear()
+            _throttle_failures.clear()
         except Exception as e:
+            if _is_throttle_error(e):
+                _register_throttle_failure(url)
+                raise
             if _is_cookie_expired(e):
                 logging.error(f"Instagram cookie xatosi (video yuklashda): {e}")
                 if has_cookie_source and _should_mark_cookie_dead(url, e):
