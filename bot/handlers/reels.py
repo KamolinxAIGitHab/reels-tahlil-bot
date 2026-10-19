@@ -815,6 +815,7 @@ _COST_LABELS = {
     "stt": "Овоз → матн (STT)",
     "analyze_content": "Матн таҳлили",
     "try_block": "«Синаб кўриш» блоки",
+    "value_fix": "Амалий қиймат қайта текшируви",
     "audio_garbled": "Овоз сифати текшируви",
     "analyze_image": "Расм таҳлили",
     "analyze_caption": "Изоҳ таҳлили",

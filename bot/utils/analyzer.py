@@ -8,7 +8,7 @@ from bot.utils import cost
 
 # Таҳлил кўрсатмалари (system prompt) ўзгартирилса, бу қийматни ошириш керак:
 # шунда доимий кэшдаги эски натижалар ишлатилмайди.
-PROMPT_VERSION = "6"
+PROMPT_VERSION = "7"
 
 client = OpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
 async_client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
@@ -458,6 +458,74 @@ def _audio_is_garbled(audio: str) -> bool:
         return False
 
 
+# «Амалий қиймат: Йўқ» сабаби ахлоқ бўлса — қиймат қатори бир марта қайта сўралади
+_NEG_MARKERS = ("Йўқ ✗", "Yo'q ✗", "Нет ✗")
+_VALUE_LABELS = ("💡 АМАЛИЙ ҚИЙМАТ", "💡 AMALIY QIYMAT", "💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ")
+_ETHICS_STEMS = ("ахлоқ", "этик", "этич", "ноэтик", "axloq", "noetik", "etik", "аморал")
+_VALUE_FIX = {
+    "lang_kirill": (
+        "«💡 АМАЛИЙ ҚИЙМАТ» қаторида «Йўқ ✗» сабаби ахлоқ деб кўрсатилган. Бу нотўғри: амалий қиймат "
+        "усулнинг ахлоқий баҳосига боғлиқ эмас, фақат томошабин видеодаги аниқ қадамни такрорлай олишига боғлиқ. "
+        "Фақат шу битта қаторни қайта ёз: «💡 АМАЛИЙ ҚИЙМАТ:» билан бошла. Агар видеода томошабин такрорлай оладиган "
+        "аниқ қадам ёки восита бўлса, «Бор ✓» деб ёз ва қадамни 1 жумлада айт. Бўлмаса, «Йўқ ✗» деб ёз ва ахлоқни эмас, "
+        "аниқ амалий сабабни (қадам йўқ, умумий ваъда ва ҳ.к.) айт. Ахлоқни бу қаторда тилга олма. Бошқа ҳеч нарса ёзма."),
+    "lang_lotin": (
+        "«💡 AMALIY QIYMAT» qatorida «Yo'q ✗» sababi axloq deb ko'rsatilgan. Bu noto'g'ri: amaliy qiymat "
+        "usulning axloqiy bahosiga bog'liq emas, faqat tomoshabin videodagi aniq qadamni takrorlay olishiga bog'liq. "
+        "Faqat shu bitta qatorni qayta yoz: «💡 AMALIY QIYMAT:» bilan boshla. Agar videoda tomoshabin takrorlay oladigan "
+        "aniq qadam yoki vosita bo'lsa, «Bor ✓» deb yoz va qadamni 1 jumlada ayt. Bo'lmasa, «Yo'q ✗» deb yoz va axloqni emas, "
+        "aniq amaliy sababni (qadam yo'q, umumiy va'da va h.k.) ayt. Axloqni bu qatorda tilga olma. Boshqa hech narsa yozma."),
+    "lang_rus": (
+        "В строке «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» причиной «Нет ✗» названа этика. Это неверно: практическая ценность "
+        "не зависит от этической оценки метода, а только от того, может ли зритель повторить конкретный шаг из видео. "
+        "Перепиши только эту одну строку, начав с «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ:». Если в видео есть конкретный шаг или инструмент, "
+        "который зритель может повторить, напиши «Есть ✓» и назови шаг одним предложением. Если нет, напиши «Нет ✗» и укажи "
+        "практическую причину (нет шагов, общие обещания и т. п.), а не этику. Этику в этой строке не упоминай. Больше ничего не пиши."),
+}
+
+
+def _fix_ethics_value(result: str, lang: str, messages: list, model: str) -> str:
+    """«Амалий қиймат: Йўқ ✗» сабаби ахлоқ бўлса, фақат шу қаторни бир марта
+    қайта сўрайди. Хато ёки номувофиқ жавобда асл натижа қайтади."""
+    if not result:
+        return result
+    lines = result.split("\n")
+    pos = None
+    for i, line in enumerate(lines):
+        ls = line.lstrip()
+        if any(ls.startswith(lab) for lab in _VALUE_LABELS):
+            pos = i
+            break
+    if pos is None:
+        return result
+    line = lines[pos]
+    low = line.lower()
+    if not any(m in line for m in _NEG_MARKERS) or not any(st in low for st in _ETHICS_STEMS):
+        return result
+    followup = _VALUE_FIX.get(lang, _VALUE_FIX["lang_kirill"])
+    try:
+        _resp = client.chat.completions.create(
+            model=model,
+            messages=messages + [
+                {"role": "assistant", "content": result},
+                {"role": "user", "content": followup},
+            ],
+            temperature=_ANALYSIS_TEMPERATURE,
+        )
+        cost.record_chat(_resp, "value_fix")
+        new_line = _resp.choices[0].message.content.strip().split("\n")[0].strip()
+    except Exception:
+        return result
+    if not new_line.startswith("💡") or "\n" in new_line:
+        return result
+    if not (any(m in new_line for m in _NEG_MARKERS) or any(m in new_line for m in _POSITIVE_MARKERS)):
+        return result
+    if any(st in new_line.lower() for st in _ETHICS_STEMS):
+        return result
+    lines[pos] = new_line
+    return "\n".join(lines)
+
+
 _TRY_HEADERS = ("🚀 СИНАБ КЎРИШ", "🚀 SINAB KO'RISH", "🚀 КАК ПОПРОБОВАТЬ")
 _POSITIVE_MARKERS = ("Бор ✓", "Bor ✓", "Есть ✓")
 
@@ -517,6 +585,7 @@ def analyze_content(text: str, lang: str = "lang_kirill", model: str = "gpt-4o")
     response = client.chat.completions.create(model=model, messages=messages, temperature=_ANALYSIS_TEMPERATURE)
     cost.record_chat(response, "analyze_content")
     result = response.choices[0].message.content
+    result = _fix_ethics_value(result, lang, messages, model)
     result = _ensure_try_block(result, lang, messages, model)
     # Рад жавоби (💡 қатори йўқ) учун бузуқлик текшируви керак эмас: у захира моделда такрорланади.
     garbled = "💡" in (result or "") and _audio_is_garbled(_audio_part(text))
