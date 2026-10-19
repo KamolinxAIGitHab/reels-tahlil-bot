@@ -8,7 +8,7 @@ from bot.utils import cost
 
 # Таҳлил кўрсатмалари (system prompt) ўзгартирилса, бу қийматни ошириш керак:
 # шунда доимий кэшдаги эски натижалар ишлатилмайди.
-PROMPT_VERSION = "7"
+PROMPT_VERSION = "8"
 
 client = OpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
 async_client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=2)
@@ -24,7 +24,7 @@ _SYSTEM_PROMPTS = {
         "Сиз профессионал контент таҳлилчисисиз.\n"
         "Берилган матнни қуйидаги тузилмада таҳлил қил:\n\n"
         "✅ ТЕХНИК ТЎҒРИ: Матндаги илмий/техник жиҳатдан исботланган фактлар\n\n"
-        "⚠️ ОРТИРИЛГАН: Ҳақиқатга яқин, лекин кўпайтириб айтилган даъволар\n\n"
+        "⚠️ ОРТИРИЛГАН: Ҳақиқатга яқин, лекин кўпайтириб айтилган даъволар. Нарх, «бепул» шарти, даромад ва «қонуний» даъволарининг ҳар бирини алоҳида қаторда «текширилмаган» деб санаб ўт\n\n"
         "❌ НОТЎҒРИ/АЛДАМЧИ: Ёлғон ёки чалғитувчи тезислар — аниқ сабаби билан\n\n"
         "💡 АМАЛИЙ ҚИЙМАТ: Бор ✓ / Йўқ ✗ — 1-2 жумла изоҳ билан. Фақат томошабин видеодаги қадамни такрорлай олишига қараб белгила; усулнинг ахлоқий баҳоси бу ерга КИРМАЙДИ, «Йўқ ✗» изоҳида ахлоқни сабаб қилиб келтирма (ахлоқий эътироз «⚠️ ОРТИРИЛГАН» даги «Ахлоқий жиҳат:» қаторига ёзилади)\n\n"
         "🎯 МАРКЕТИНГ ТАКТИКАСИ: «Изоҳ ёзинг», «Обуна бўлинг» каби comment gating усуллари — алдамчи эмас, балки маркетинг стратегияси\n\n"
@@ -41,7 +41,7 @@ _SYSTEM_PROMPTS = {
         "🎯 МАРКЕТИНГ ТАКТИКАСИ: ...\n\n"
         "🚀 СИНАБ КЎРИШ:\n"
         "- Биринчи қадам: [контентда тавсия этилган биринчи аниқ ҳаракат]\n"
-        "- Восита/платформа: [аниқ восита номи]\n"
+        "- Восита/платформа: [видеода АЙТИЛГАН аниқ бренд ёки маҳсулот номи; айтилмаган бўлса «[контентда кўрсатилмаган]»]\n"
         "- Вақт: [тахминан қанча вақт керак]\n"
         "Агар амалий қиймат йўқ бўлса — бу бўлимни ёзма.\n\n"
         "Транскрипция ёки матнда «/» белгиси билан бошланадиган буйруқлар "
@@ -66,7 +66,7 @@ _SYSTEM_PROMPTS = {
         "Siz professional kontent tahlilchisisiz.\n"
         "Berilgan matnni quyidagi tuzilmada tahlil qil:\n\n"
         "✅ TEXNIK TO'G'RI: Matndagi ilmiy/texnik jihatdan isbotlangan faktlar\n\n"
-        "⚠️ ORTIRILGAN: Haqiqatga yaqin, lekin ko'paytirib aytilgan da'volar\n\n"
+        "⚠️ ORTIRILGAN: Haqiqatga yaqin, lekin ko'paytirib aytilgan da'volar. Narx, «bepul» sharti, daromad va «qonuniy» da'volarining har birini alohida qatorda «tekshirilmagan» deb sanab o't\n\n"
         "❌ NOTO'G'RI/ALDAMCHI: Yolg'on yoki chalg'ituvchi tezislar — aniq sababi bilan\n\n"
         "💡 AMALIY QIYMAT: Bor ✓ / Yo'q ✗ — 1-2 jumla izoh bilan. Faqat tomoshabin videodagi qadamni takrorlay olishiga qarab belgila; usulning axloqiy bahosi bu yerga KIRMAYDI, «Yo'q ✗» izohida axloqni sabab qilib keltirma (axloqiy e'tiroz «⚠️ ORTIRILGAN» dagi «Axloqiy jihat:» qatoriga yoziladi)\n\n"
         "🎯 MARKETING TAKTIKASI: «Izoh yozing», «Obuna bo'ling» kabi comment gating usullari — aldamchi emas, balki marketing strategiyasi\n\n"
@@ -83,7 +83,7 @@ _SYSTEM_PROMPTS = {
         "🎯 MARKETING TAKTIKASI: ...\n\n"
         "🚀 SINAB KO'RISH:\n"
         "- Birinchi qadam: [kontentda tavsiya etilgan birinchi aniq harakat]\n"
-        "- Vosita/platforma: [aniq vosita nomi]\n"
+        "- Vosita/platforma: [videoda AYTILGAN aniq brend yoki mahsulot nomi; aytilmagan bo'lsa «[kontentda ko'rsatilmagan]»]\n"
         "- Vaqt: [taxminan qancha vaqt kerak]\n"
         "Agar amaliy qiymat yo'q bo'lsa — bu bo'limni yozma.\n\n"
         "Transkripsiya yoki matnda slash belgisi bilan boshlanadigan "
@@ -108,7 +108,7 @@ _SYSTEM_PROMPTS = {
         "Ты профессиональный аналитик контента.\n"
         "Проанализируй данный текст по следующей структуре:\n\n"
         "✅ ТЕХНИЧЕСКИ ВЕРНО: Научно/технически подтверждённые факты из текста\n\n"
-        "⚠️ ПРЕУВЕЛИЧЕНО: Утверждения, близкие к правде, но преувеличенные\n\n"
+        "⚠️ ПРЕУВЕЛИЧЕНО: Утверждения, близкие к правде, но преувеличенные. Цену, условие «бесплатно», доход и утверждения «легально» перечисли каждое отдельной строкой как непроверенные\n\n"
         "❌ НЕВЕРНО/ВВОДЯЩЕЕ В ЗАБЛУЖДЕНИЕ: Ложные или вводящие в заблуждение тезисы — с конкретной причиной\n\n"
         "💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ: Есть ✓ / Нет ✗ — с пояснением в 1-2 предложения. Оценивай только по тому, может ли зритель повторить шаг из видео; этическая оценка метода сюда НЕ входит, не называй этику причиной для «Нет ✗» (этическое возражение пишется в «⚠️ ПРЕУВЕЛИЧЕНО» в строке «Этическая сторона:»)\n\n"
         "🎯 МАРКЕТИНГОВАЯ ТАКТИКА: Методы comment gating («напишите комментарий», «подпишитесь») — не обман, а маркетинговая стратегия\n\n"
@@ -125,7 +125,7 @@ _SYSTEM_PROMPTS = {
         "🎯 МАРКЕТИНГОВАЯ ТАКТИКА: ...\n\n"
         "🚀 КАК ПОПРОБОВАТЬ:\n"
         "- Первый шаг: [конкретное действие из контента]\n"
-        "- Инструмент/платформа: [точное название]\n"
+        "- Инструмент/платформа: [точное название, ЕСЛИ оно названо в видео; иначе «[в контенте не указано]»]\n"
         "- Время: [примерно сколько нужно]\n"
         "Если практической ценности нет — этот блок не писать.\n\n"
         "Команды со слешем (/showcase и подобные), технические термины, "
@@ -237,6 +237,7 @@ _QUALITY_RULES = {
         "27. «💡 АМАЛИЙ ҚИЙМАТ» усулнинг ахлоқий баҳосига боғлиқ эмас. Усул ахлоқий жиҳатдан шубҳали, лекин қонуний бўлса ва томошабин аниқ қадамни такрорлай олса, «Бор ✓» деб ёз; ахлоқий эътирозни «⚠️ ОРТИРИЛГАН» ёки изоҳда алоҳида айт.\n"
         "28. Видео ёки изоҳда усул ахлоқий жиҳатдан шубҳали деб айтилса («ноэтик», «аёвсиз») ёки бошқа одамни чалғитиши мумкин бўлса (масалан, сўровсиз мижозга AI орқали мурожаат қилиш ёки AI нинг компания номи билан жавоб бериши), аввало шу чалғитиш ёки ёлғон жиҳатини, кейин бошқа таъсирларни ёз; «⚠️ ОРТИРИЛГАН» да бу эътирозни алоҳида қаторда «Ахлоқий жиҳат:» деб ёз. Агар «Бор ✓» бўлса ҳам, бу қаторни тушириб қолдирма.\n"
         "29. «🚀 СИНАБ КЎРИШ» да «Восита/платформа» — аниқ номли восита (масалан, ChatGPT, Make.com), «AI агент» каби умумий сўз эмас; аниқ номи йўқ бўлса, «[контентда кўрсатилмаган]» деб ёз. «Вақт» — давомийлик (масалан, «2–3 соат»), даъво эмас.\n"
+        "30. Видеода ёки изоҳда хизмат, тўлов ёки пул чиқариш фақат айрим мамлакатларда мумкин деб рўйхат берилса ва Ўзбекистон рўйхатда бўлмаса, «⚠️ ОРТИРИЛГАН» да алоҳида қаторда «Ўзбекистон рўйхатда кўринмайди; имконият текширилсин» деб ёз. Рўйхатда Ўзбекистон бўлса, бу қаторни ёзма.\n"
     ),
     "lang_lotin": (
         "\n\nQO'SHIMCHA QOIDALAR (qat'iy rioya qil):\n"
@@ -292,6 +293,7 @@ _QUALITY_RULES = {
         "26. «💡 AMALIY QIYMAT» usulning axloqiy bahosiga bog'liq emas. Usul axloqiy jihatdan shubhali, lekin qonuniy bo'lsa va tomoshabin aniq qadamni takrorlay olsa, «Bor ✓» deb yoz; axloqiy e'tirozni «⚠️ ORTIRILGAN» yoki izohda alohida ayt.\n"
         "27. Videoda yoki izohda usul axloqiy jihatdan shubhali deb aytilsa («noetik», «ayovsiz») yoki boshqa odamni chalg'itishi mumkin bo'lsa (masalan, so'rovsiz mijozga AI orqali murojaat qilish yoki AI ning kompaniya nomi bilan javob berishi), avvalo shu chalg'itish yoki yolg'on jihatini, keyin boshqa ta'sirlarni yoz; «⚠️ ORTIRILGAN» da bu e'tirozni alohida qatorda «Axloqiy jihat:» deb yoz. «Bor ✓» bo'lsa ham, bu qatorni tushirib qoldirma. Huquqiy da'vo («mutlaqo qonuniy») ham alohida qatorda «tekshirilmagan» deb sanalsin.\n"
         "28. «🚀 SINAB KO'RISH» da «Vosita/platforma» — aniq nomli vosita (masalan, ChatGPT, Make.com), «AI agent» kabi umumiy so'z emas; aniq nomi yo'q bo'lsa, «[kontentda ko'rsatilmagan]» deb yoz. «Vaqt» — davomiylik (masalan, «2–3 soat»), da'vo emas.\n"
+        "29. Videoda yoki izohda xizmat, to'lov yoki pul chiqarish faqat ayrim mamlakatlarda mumkin deb ro'yxat berilsa va O'zbekiston ro'yxatda bo'lmasa, «⚠️ ORTIRILGAN» da alohida qatorda «O'zbekiston ro'yxatda ko'rinmaydi; imkoniyat tekshirilsin» deb yoz. Ro'yxatda O'zbekiston bo'lsa, bu qatorni yozma.\n"
     ),
     "lang_rus": (
         "\n\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА (соблюдай строго):\n"
@@ -344,6 +346,7 @@ _QUALITY_RULES = {
         "24. Практическая ценность не зависит от этичности метода. Если метод спорный с этической точки зрения, но законный, и зритель может повторить конкретный шаг, в «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» пиши «Есть ✓» и укажи этическое возражение отдельно в «⚠️ ПРЕУВЕЛИЧЕНО» или в пояснении.\n"
         "25. Если в видео или подписи метод назван неэтичным («неэтично», «без жалости») или может ввести людей в заблуждение (например, обращение к клиенту через ИИ без его запроса или ответы ИИ от имени компании), сначала назови именно этот обман или введение в заблуждение, затем прочие последствия; в «⚠️ ПРЕУВЕЛИЧЕНО» напиши это отдельной строкой «Этическая сторона:», даже если стоит «Есть ✓». Юридические утверждения («абсолютно легально») тоже перечисли отдельной строкой как непроверенные.\n"
         "26. В «🚀 КАК ПОПРОБОВАТЬ» «Инструмент/платформа» — конкретное название (например, ChatGPT, Make.com), а не общие слова вроде «AI-агент»; если названия нет, пиши «[в контенте не указано]». «Время» — длительность (например, «2–3 часа»), а не утверждение.\n"
+        "27. Если в видео или подписи перечислены страны, где доступна услуга, оплата или вывод денег, и Узбекистана в списке нет, в «⚠️ ПРЕУВЕЛИЧЕНО» отдельной строкой напиши «Узбекистан в списке не указан; возможность нужно проверить». Если Узбекистан в списке есть, эту строку не пиши.\n"
     ),
 }
 
@@ -366,15 +369,15 @@ _TRY_BLOCK = {
     "lang_kirill": ("Бор ✓", "🚀 СИНАБ КЎРИШ:",
                     "«💡 АМАЛИЙ ҚИЙМАТ» да «Бор ✓» деб ёзилган, лекин «🚀 СИНАБ КЎРИШ:» бўлими йўқ. "
                     "Фақат шу бўлимни ёз: сарлавҳа «🚀 СИНАБ КЎРИШ:», кейин уч банд — «- Биринчи қадам:», "
-                    "«- Восита/платформа:», «- Вақт:». Қадамлар томошабин қила оладиган ҳаракат бўлсин; муаллифнинг даъвосини ёки натижа муддатини такрорлама. Бошқа ҳеч нарса ёзма."),
+                    "«- Восита/платформа:» (фақат видеода айтилган аниқ ном; айтилмаган бўлса «[контентда кўрсатилмаган]»), «- Вақт:». Қадамлар томошабин қила оладиган ҳаракат бўлсин; муаллифнинг даъвосини ёки натижа муддатини такрорлама. Бошқа ҳеч нарса ёзма."),
     "lang_lotin": ("Bor ✓", "🚀 SINAB KO'RISH:",
                    "«💡 AMALIY QIYMAT» da «Bor ✓» deb yozilgan, lekin «🚀 SINAB KO'RISH:» bo'limi yo'q. "
                    "Faqat shu bo'limni yoz: sarlavha «🚀 SINAB KO'RISH:», keyin uch band — «- Birinchi qadam:», "
-                   "«- Vosita/platforma:», «- Vaqt:». Qadamlar tomoshabin qila oladigan harakat bo'lsin; muallifning da'vosini yoki natija muddatini takrorlama. Boshqa hech narsa yozma."),
+                   "«- Vosita/platforma:» (faqat videoda aytilgan aniq nom; aytilmagan bo'lsa «[kontentda ko'rsatilmagan]»), «- Vaqt:». Qadamlar tomoshabin qila oladigan harakat bo'lsin; muallifning da'vosini yoki natija muddatini takrorlama. Boshqa hech narsa yozma."),
     "lang_rus": ("Есть ✓", "🚀 КАК ПОПРОБОВАТЬ:",
                  "В «💡 ПРАКТИЧЕСКАЯ ЦЕННОСТЬ» стоит «Есть ✓», но раздела «🚀 КАК ПОПРОБОВАТЬ:» нет. "
                  "Напиши только этот раздел: заголовок «🚀 КАК ПОПРОБОВАТЬ:», затем три пункта — "
-                 "«- Первый шаг:», «- Инструмент/платформа:», «- Время:». Шаги должны быть действиями, которые может выполнить зритель; не повторяй заявление автора и срок результата. Больше ничего не пиши."),
+                 "«- Первый шаг:», «- Инструмент/платформа:» (только название, прозвучавшее в видео; иначе «[в контенте не указано]»), «- Время:». Шаги должны быть действиями, которые может выполнить зритель; не повторяй заявление автора и срок результата. Больше ничего не пиши."),
 }
 
 
@@ -620,7 +623,7 @@ async def analyze_image_content(images: list, caption: str, lang: str = "lang_ki
 
 🚀 СИНАБ КЎРИШ:
 - Биринчи қадам: [контентда тавсия этилган биринчи аниқ ҳаракат]
-- Восита/платформа: [аниқ восита номи]
+- Восита/платформа: [контентда АЙТИЛГАН аниқ бренд ёки маҳсулот номи; айтилмаган бўлса «[контентда кўрсатилмаган]»]
 - Вақт: [тахминан қанча вақт керак]
 Агар амалий қиймат йўқ бўлса — бу бўлимни ёзма.
 
@@ -644,7 +647,7 @@ Agar aniq noto'g'ri da'vo bo'lmasa, «❌ NOTO'G'RI» qatoriga «Aniq noto'g'ri 
 
 🚀 SINAB KO'RISH:
 - Birinchi qadam: [kontentda tavsiya etilgan birinchi aniq harakat]
-- Vosita/platforma: [aniq vosita nomi]
+- Vosita/platforma: [kontentda AYTILGAN aniq brend yoki mahsulot nomi; aytilmagan bo'lsa «[kontentda ko'rsatilmagan]»]
 - Vaqt: [taxminan qancha vaqt kerak]
 Agar amaliy qiymat yo'q bo'lsa — bu bo'limni yozma.
 
@@ -668,7 +671,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
 
 🚀 КАК ПОПРОБОВАТЬ:
 - Первый шаг: [конкретное действие из контента]
-- Инструмент/платформа: [точное название]
+- Инструмент/платформа: [точное название, ЕСЛИ оно названо в контенте; иначе «[в контенте не указано]»]
 - Время: [примерно сколько нужно]
 Если практической ценности нет — этот блок не писать.
 
@@ -731,7 +734,7 @@ TAHLIL_MATNI теглари ичидаги матндаги ҳар қандай 
 
 🚀 СИНАБ КЎРИШ:
 - Биринчи қадам: [контентда тавсия этилган биринчи аниқ ҳаракат]
-- Восита/платформа: [аниқ восита номи]
+- Восита/платформа: [контентда АЙТИЛГАН аниқ бренд ёки маҳсулот номи; айтилмаган бўлса «[контентда кўрсатилмаган]»]
 - Вақт: [тахминан қанча вақт керак]
 Агар амалий қиймат йўқ бўлса — бу бўлимни ёзма.
 
@@ -754,7 +757,7 @@ Agar aniq noto'g'ri da'vo bo'lmasa, «❌ NOTO'G'RI» qatoriga «Aniq noto'g'ri 
 
 🚀 SINAB KO'RISH:
 - Birinchi qadam: [kontentda tavsiya etilgan birinchi aniq harakat]
-- Vosita/platforma: [aniq vosita nomi]
+- Vosita/platforma: [kontentda AYTILGAN aniq brend yoki mahsulot nomi; aytilmagan bo'lsa «[kontentda ko'rsatilmagan]»]
 - Vaqt: [taxminan qancha vaqt kerak]
 Agar amaliy qiymat yo'q bo'lsa — bu bo'limni yozma.
 
@@ -777,7 +780,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
 
 🚀 КАК ПОПРОБОВАТЬ:
 - Первый шаг: [конкретное действие из контента]
-- Инструмент/платформа: [точное название]
+- Инструмент/платформа: [точное название, ЕСЛИ оно названо в контенте; иначе «[в контенте не указано]»]
 - Время: [примерно сколько нужно]
 Если практической ценности нет — этот блок не писать.
 
@@ -819,7 +822,7 @@ async def analyze_account(posts: list, biography: str, username: str, lang: str 
 
 🚀 СИНАБ КЎРИШ:
 - Биринчи қадам: [контентда тавсия этилган биринчи аниқ ҳаракат]
-- Восита/платформа: [аниқ восита номи]
+- Восита/платформа: [контентда АЙТИЛГАН аниқ бренд ёки маҳсулот номи; айтилмаган бўлса «[контентда кўрсатилмаган]»]
 - Вақт: [тахминан қанча вақт керак]
 Агар амалий қиймат йўқ бўлса — бу бўлимни ёзма.
 
@@ -841,7 +844,7 @@ Tahlil formatini qat'iy saqlang:
 
 🚀 SINAB KO'RISH:
 - Birinchi qadam: [kontentda tavsiya etilgan birinchi aniq harakat]
-- Vosita/platforma: [aniq vosita nomi]
+- Vosita/platforma: [kontentda AYTILGAN aniq brend yoki mahsulot nomi; aytilmagan bo'lsa «[kontentda ko'rsatilmagan]»]
 - Vaqt: [taxminan qancha vaqt kerak]
 Agar amaliy qiymat yo'q bo'lsa — bu bo'limni yozma.
 
@@ -863,7 +866,7 @@ Transkripsiya yoki matnda slash belgisi bilan boshlanadigan buyruqlar, texnik at
 
 🚀 КАК ПОПРОБОВАТЬ:
 - Первый шаг: [конкретное действие из контента]
-- Инструмент/платформа: [точное название]
+- Инструмент/платформа: [точное название, ЕСЛИ оно названо в контенте; иначе «[в контенте не указано]»]
 - Время: [примерно сколько нужно]
 Если практической ценности нет — этот блок не писать.
 
